@@ -46,6 +46,43 @@ line by line.
 matches (with full replay) are available — great for settlement demos while the tournament
 is still running.
 
+## 2026-07-11 — Program / CPI build
+
+**Sharp edge — Anchor's typed CPI (`declare_program!`) discards the return-data producer.**
+The generated `Return<T>::get()` is literally `let (_key, data) = get_return_data().unwrap();
+T::try_from_slice(&data).unwrap()`. It throws away the producer program id and double-unwraps.
+For an oracle whose boolean moves money, consuming that via the typed helper is the textbook
+CPI return-data-spoofing setup. We deliberately hand-rolled the `validate_stat_v2` CPI and
+verify `producer == txoracle` before reading the byte. Not TxLINE's bug, but integrators
+CPIing the oracle for settlement should be warned off the typed-return convenience path — a
+one-line note in the on-chain-validation guide would prevent a real vulnerability class.
+
+**Delight — `validate_stat_v2` returns `false` for a failing predicate (does not throw).**
+The IDL exposes error 6021 `PredicateFailed`, so it wasn't obvious whether a losing predicate
+reverts or returns false. Confirmed on devnet it cleanly returns `false`, which lets a
+settlement contract distinguish "predicate didn't hold, pay the other side" from "proof is
+invalid, reject" without parsing error codes. Worth stating explicitly in the docs.
+
+**Note — `validate_stat_v2` costs ~124K–200K CU, not the 1.4M the docs tell you to reserve.**
+The on-chain-validation guide hardcodes `setComputeUnitLimit(1_400_000)`. Real measured
+consumption for 1–2 stat proofs is 123K (single) / 200K (two-stat). Over-reserving CU inflates
+priority-fee estimates and can crowd a wrapping transaction's budget. A realistic figure (or a
+"measure, don't assume" note) would help. We set a measured limit with headroom instead.
+
+**Doc-drift warning — two period-prefix encodings circulate; live data agrees with the
+current soccer-feed page.** An older stat-key cheat-sheet (still circulating in hackathon
+materials) maps periods as H1=+1000, H2=+2000, ET1=+3000, ET2=+4000, PE=+5000. Live World Cup
+records and the current `documentation/scores/soccer-feed` page instead use:
+
+| Prefix | 0     | 1000 | 2000 | 3000 | 4000 | 5000 | 6000 | 7000    |
+| ------ | ----- | ---- | ---- | ---- | ---- | ---- | ---- | ------- |
+| Period | Total | H1   | HT   | H2   | ET1  | ET2  | PE   | ETTotal |
+
+Verified against fixture 18192996 (Mexico vs England): H1 record stats `1001/1002 = 1/2`
+match the 1-2 halftime score; `2007 = 5` matches Participant1's HT corner count; `3001 = 1`
+matches P1's second-half goal. Anyone settling on the stale mapping would prove the wrong
+period's stats — worth an explicit "encoding changed" callout in the docs.
+
 **Note — `/api/scores/historical/{fixtureId}` window.** Historical replay only works for
 fixtures whose start time is between 6 hours and 2 weeks in the past. Fine for our demo, but
 worth knowing before you pick a demo fixture: anything older silently falls out of the window.
