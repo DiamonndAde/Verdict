@@ -1,0 +1,53 @@
+MEASUREMENT REPORT — Mexico vs England (fixture 18192996)
+final seq 1046 | mid-match seq 469 | oracle 6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
+
+1) READ-ONLY VALIDATION (.view) — positive controls
+  PASS  legacy 2-stat ADD corners=14 > 9 -> returned true (expected true)
+  PASS  legacy 2-stat ADD corners=14 > 20 (losing side) -> returned false (expected false)
+  PASS  legacy single P2 goals=3 > 2 -> returned true (expected true)
+  PASS  v2 2-stat ADD corners > 9 -> returned true (expected true)
+  PASS  v2 single P2 goals > 2 -> returned true (expected true)
+  PASS  v3 2-stat ADD corners > 9 (multiproof) -> returned true (expected true)
+
+2) ADVERSARIAL PROBES against the oracle
+  PASS  tampered stat VALUE (12->13) -> reverted Error (expected error)
+  PASS  tampered stat PERIOD (100->2) -> reverted Error (expected error)
+  PASS  tampered summary fixtureId -> reverted Error (expected error)
+  PASS  HONEST mid-match proof (corners=6, period=2) "under 9.5" LT(10) -> returned true (expected true)
+        ^ oracle accepts mid-match proofs BY DESIGN — verdict's settle must therefore
+          require statToProve.period == 100 (hash-bound, tamper-proof per the probe above)
+
+3) SERIALIZED SIZES (borsh ix data | full v0 tx with compute-budget ix, 1 signer)
+  legacy single-stat                 ix data  370 B | tx  615 B | headroom vs 1232: 617 B
+  legacy 2-stat (corners)            ix data  584 B | tx  829 B | headroom vs 1232: 403 B
+  v2 single-stat                     ix data  383 B | tx  628 B | headroom vs 1232: 604 B
+  v2 2-stat (corners)                ix data  566 B | tx  811 B | headroom vs 1232: 421 B
+  v3 single-stat (multiproof)        ix data  395 B | tx  640 B | headroom vs 1232: 592 B
+  v3 2-stat (multiproof)             ix data  417 B | tx  662 B | headroom vs 1232: 570 B
+
+  proof-node counts (33 B each): final 2-stat: statProof 5+5, subTree 1, mainTree 1
+  v3 multiproof: leaves 2, shared hashes 5, per-leaf proofs 0/0
+
+4) SETTLE ARCHITECTURE DECISION
+  measured mainTreeProof depth: 1 node(s); projecting +4 nodes for ~32-fixture days
+  legacy 2-stat  settle est 1071 B (headroom 161) | busy-day est 1203 B (headroom 29)
+  v2 2-stat      settle est 1053 B (headroom 179) | busy-day est 1185 B (headroom 47)
+  v3 2-stat      settle est  904 B (headroom 328) | busy-day est 1036 B (headroom 196)
+
+  CHOSEN: settle CPIs txoracle.validate_stat_v2 in a SINGLE transaction. Rationale:
+   - documented + current API shape (statKeys mode); legacy statKey path is deprecated-in-name
+   - NDimensionalStrategy (single/binary indexed predicates) maps 1:1 onto verdict's stored
+     predicate, and the program BUILDS the strategy on-chain from stored terms — the settler
+     supplies only the Merkle payload, never the terms
+   - fits single-tx with headroom even at busy-day tree depths (see projection above)
+   - v3 multiproof is ~150 B smaller still, but its endpoint is undocumented — noted in
+     FEEDBACK.md; buffer flow not required, ALT escape hatch documented if trees ever exceed
+     projections
+  Settle gates locked (enforced by verdict before/after the CPI):
+   1. pinned txoracle program id (arbitrary-CPI defense)
+   2. summary.fixtureId == market.fixture_id
+   3. every leaf: key == stored predicate key(s), in stored order
+   4. every leaf: period == 100 (game_finalised; hash-bound per probe 2)
+   5. summary.updateStats.maxTimestamp >= market.settle_after_ts (defense-in-depth)
+   6. return-data producer == txoracle id, decode bool (spoofing defense)
+   7. status guard Active->Settled (double-settle defense)
