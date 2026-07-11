@@ -19,6 +19,10 @@ pub enum VerdictError {
     InvalidSettleAfter,
     #[msg("Vault is empty")]
     EmptyVault,
+    #[msg("Token account is for the wrong mint")]
+    WrongMint,
+    #[msg("Token account is not owned by the expected party")]
+    InvalidTokenAccountOwner,
 
     // --- predicate ---
     #[msg("Predicate is malformed: a second stat key requires an operator, and vice versa")]

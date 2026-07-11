@@ -26,20 +26,13 @@ pub struct Settle<'info> {
     pub vault: Account<'info, TokenAccount>,
 
     /// Both parties' token accounts are required up front because the winner is not known
-    /// until the oracle answers. Ownership is pinned to the market's two participants, so
-    /// the payout cannot be redirected.
-    #[account(
-        mut,
-        constraint = creator_token_account.mint == market.mint @ VerdictError::EmptyVault,
-        constraint = creator_token_account.owner == market.creator @ VerdictError::EmptyVault,
-    )]
+    /// until the oracle answers. The mint is pinned here; ownership is bound in the handler
+    /// AFTER the status guard resolves the taker, so a settle attempt before acceptance
+    /// fails with a clean `MarketNotActive` rather than a token-account error.
+    #[account(mut, constraint = creator_token_account.mint == market.mint @ VerdictError::WrongMint)]
     pub creator_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = taker_token_account.mint == market.mint @ VerdictError::EmptyVault,
-        constraint = Some(taker_token_account.owner) == market.taker @ VerdictError::EmptyVault,
-    )]
+    #[account(mut, constraint = taker_token_account.mint == market.mint @ VerdictError::WrongMint)]
     pub taker_token_account: Account<'info, TokenAccount>,
 
     /// CHECK: pinned to TXORACLE_PROGRAM_ID inside `txoracle_cpi::validate_stat_v2` before
@@ -74,6 +67,20 @@ pub fn handler(ctx: Context<Settle>, payload: StatValidationInput) -> Result<()>
         VerdictError::MarketNotActive
     );
     let taker = market.taker.ok_or(VerdictError::MarketNotActive)?;
+
+    // Bind the payout destinations to the two parties now that the taker is known. Doing
+    // this in the handler (not an account constraint) keeps the status guard above as the
+    // first thing a settler hits.
+    require_keys_eq!(
+        ctx.accounts.creator_token_account.owner,
+        market.creator,
+        VerdictError::InvalidTokenAccountOwner
+    );
+    require_keys_eq!(
+        ctx.accounts.taker_token_account.owner,
+        taker,
+        VerdictError::InvalidTokenAccountOwner
+    );
 
     payload.check_bounds()?;
 

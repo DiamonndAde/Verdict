@@ -21,18 +21,10 @@ pub struct RefundExpired<'info> {
     #[account(mut, address = market.vault)]
     pub vault: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = creator_token_account.mint == market.mint @ VerdictError::EmptyVault,
-        constraint = creator_token_account.owner == market.creator @ VerdictError::EmptyVault,
-    )]
+    #[account(mut, constraint = creator_token_account.mint == market.mint @ VerdictError::WrongMint)]
     pub creator_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = taker_token_account.mint == market.mint @ VerdictError::EmptyVault,
-        constraint = Some(taker_token_account.owner) == market.taker @ VerdictError::EmptyVault,
-    )]
+    #[account(mut, constraint = taker_token_account.mint == market.mint @ VerdictError::WrongMint)]
     pub taker_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
@@ -46,10 +38,23 @@ pub fn handler(ctx: Context<RefundExpired>) -> Result<()> {
         ctx.accounts.market.status == MarketStatus::Active,
         VerdictError::MarketNotActive
     );
+    let taker = ctx.accounts.market.taker.ok_or(VerdictError::MarketNotActive)?;
     let now_unix = Clock::get()?.unix_timestamp;
     require!(
         now_unix >= ctx.accounts.market.expiry_unix,
         VerdictError::NotExpired
+    );
+
+    // Bind refund destinations to the two parties (handler-side, same rationale as settle).
+    require_keys_eq!(
+        ctx.accounts.creator_token_account.owner,
+        ctx.accounts.market.creator,
+        VerdictError::InvalidTokenAccountOwner
+    );
+    require_keys_eq!(
+        ctx.accounts.taker_token_account.owner,
+        taker,
+        VerdictError::InvalidTokenAccountOwner
     );
 
     let pot = ctx.accounts.vault.amount;

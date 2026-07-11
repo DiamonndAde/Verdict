@@ -8,13 +8,21 @@
     "apps/*"
   ],
   "scripts": {
-    "find-fixture": "tsx scripts/find-fixture.ts",
+    "test": "tsx --test tests/verdict.test.ts",
     "setup-wallets": "tsx scripts/setup-wallets.ts",
+    "setup-dusdc": "tsx scripts/setup-dusdc.ts",
+    "find-fixture": "tsx scripts/find-fixture.ts",
+    "record-proofs": "tsx scripts/record-proofs.ts",
+    "dump-oracle-state": "tsx scripts/dump-oracle-state.ts",
     "measure-settle": "tsx scripts/measure-settle.ts",
+    "measure-cu": "tsx scripts/measure-cu.ts",
     "demo": "tsx scripts/demo.ts"
   },
   "devDependencies": {
+    "@solana/spl-token": "^0.4.15",
     "@types/node": "^22.13.4",
+    "bn.js": "^5.2.5",
+    "litesvm": "^0.8.0",
     "tsx": "^4.23.0",
     "typescript": "^5.7.3"
   }

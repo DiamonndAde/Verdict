@@ -13,4 +13,4 @@ cluster = "devnet"
 wallet = ".keys/deployer.json"
 
 [scripts]
-test = "npx tsx tests/verdict.test.ts"
+test = "npx tsx --test tests/verdict.test.ts"
