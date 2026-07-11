@@ -1,0 +1,21 @@
+[package]
+name = "verdict"
+version = "0.1.0"
+description = "1v1 wagers settled trustlessly by TxLINE cryptographic proof"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "verdict"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"

@@ -1,0 +1,21 @@
+{
+  "name": "verdict",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Challenge a friend, settle by cryptographic proof. 1v1 sports wagers settled trustlessly against TxLINE Merkle-proven match data on Solana.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "find-fixture": "tsx scripts/find-fixture.ts",
+    "setup-wallets": "tsx scripts/setup-wallets.ts",
+    "measure-settle": "tsx scripts/measure-settle.ts",
+    "demo": "tsx scripts/demo.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.23.0",
+    "typescript": "^5.7.3"
+  }
+}

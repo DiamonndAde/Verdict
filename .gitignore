@@ -1,0 +1,16 @@
+# deps / builds
+node_modules/
+dist/
+target/
+.anchor/
+test-ledger/
+
+# secrets — never commit keys or tokens
+.keys/
+.env
+.env.local
+*.env
+
+# editor/os noise
+.DS_Store
+*.log

@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+verdict = "GcEBPhKczXmkV6CmPqUQ2TpNS5PnbjL7RECv7yCW5U8e"
+
+[provider]
+cluster = "devnet"
+wallet = ".keys/deployer.json"
+
+[scripts]
+test = "npx tsx tests/verdict.test.ts"
