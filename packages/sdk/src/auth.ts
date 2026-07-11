@@ -107,15 +107,19 @@ export class TxLineAuth {
         txSig = await this.subscribeOnChain();
       } catch (err) {
         // 6016 ActiveSubscription: wallet already subscribed but we lost the txSig needed
-        // for activation. Only recovery is a fresh wallet (or the original signature).
+        // for activation. Recover it from the wallet's recent transaction history.
         if (String(err).includes("ActiveSubscription") || String(err).includes("6016")) {
-          throw new Error(
-            `Wallet ${this.wallet.publicKey.toBase58()} already has an active TxLINE ` +
-              `subscription but no cached activation txSig. Re-activate with the original ` +
-              `subscribe signature or use a fresh wallet.`,
-          );
+          txSig = await this.findPreviousSubscribeTxSig();
+          if (!txSig) {
+            throw new Error(
+              `Wallet ${this.wallet.publicKey.toBase58()} already has an active TxLINE ` +
+                `subscription but the original subscribe txSig could not be recovered. ` +
+                `Use a fresh wallet.`,
+            );
+          }
+        } else {
+          throw err;
         }
-        throw err;
       }
     }
 
@@ -136,8 +140,14 @@ export class TxLineAuth {
     if (!res.ok) {
       throw new Error(`token/activate failed: ${res.status} ${await res.text()}`);
     }
-    const body = (await res.json()) as { token?: string } | string;
-    this.apiToken = typeof body === "string" ? body : (body.token ?? "");
+    // The endpoint answers with the bare token as text/plain (not JSON) — see FEEDBACK.md.
+    const raw = (await res.text()).trim();
+    try {
+      const parsed = JSON.parse(raw) as { token?: string } | string;
+      this.apiToken = typeof parsed === "string" ? parsed : (parsed.token ?? "");
+    } catch {
+      this.apiToken = raw.replace(/^"+|"+$/g, "");
+    }
     if (!this.apiToken) throw new Error("token/activate returned no token");
 
     this.saveCache({
@@ -146,6 +156,21 @@ export class TxLineAuth {
       apiToken: this.apiToken,
       activatedAt: new Date().toISOString(),
     });
+  }
+
+  /** Scan recent wallet history for a successful txoracle subscribe transaction. */
+  private async findPreviousSubscribeTxSig(): Promise<string | undefined> {
+    const { TXORACLE_PROGRAM_ID } = await import("./txoracle.js");
+    const sigs = await this.connection.getSignaturesForAddress(this.wallet.publicKey, { limit: 20 });
+    for (const s of sigs) {
+      if (s.err) continue;
+      const tx = await this.connection.getTransaction(s.signature, {
+        maxSupportedTransactionVersion: 0,
+      });
+      const keys = tx?.transaction.message.staticAccountKeys ?? [];
+      if (keys.some((k) => k.equals(TXORACLE_PROGRAM_ID))) return s.signature;
+    }
+    return undefined;
   }
 
   /** Sends txoracle.subscribe(serviceLevelId, weeks) and returns the confirmed signature. */

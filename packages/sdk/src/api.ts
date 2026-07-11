@@ -38,7 +38,17 @@ export class TxLineClient {
       if (!res.ok) {
         throw new Error(`GET ${url.pathname}${url.search} -> ${res.status}: ${await res.text()}`);
       }
-      return (await res.json()) as T;
+      const text = await res.text();
+      // /scores/historical answers with SSE-framed `data: {...}` lines despite the OpenAPI
+      // declaring a JSON array (see FEEDBACK.md) — normalise both shapes here.
+      if (text.trimStart().startsWith("data:")) {
+        return text
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => JSON.parse(line.slice(5).trim())) as T;
+      }
+      return JSON.parse(text) as T;
     }
   }
 
@@ -48,21 +58,24 @@ export class TxLineClient {
   }
 
   /** Latest score state for a fixture, optionally as of a historical timestamp (ms). */
-  scoresSnapshot(fixtureId: number, asOfMs?: number): Promise<ScoreRecord[]> {
-    return this.get<ScoreRecord[]>(`/scores/snapshot/${fixtureId}`, { asOf: asOfMs });
+  async scoresSnapshot(fixtureId: number, asOfMs?: number): Promise<ScoreRecord[]> {
+    const raw = await this.get<Record<string, unknown>[]>(`/scores/snapshot/${fixtureId}`, { asOf: asOfMs });
+    return raw.map(normalizeScoreRecord);
   }
 
   /** Score updates in a 5-minute interval bucket. */
-  scoresUpdates(epochDay: number, hourOfDay: number, interval: number): Promise<ScoreRecord[]> {
-    return this.get<ScoreRecord[]>(`/scores/updates/${epochDay}/${hourOfDay}/${interval}`);
+  async scoresUpdates(epochDay: number, hourOfDay: number, interval: number): Promise<ScoreRecord[]> {
+    const raw = await this.get<Record<string, unknown>[]>(`/scores/updates/${epochDay}/${hourOfDay}/${interval}`);
+    return raw.map(normalizeScoreRecord);
   }
 
   /**
    * Full score-update log for one fixture. Only serves fixtures whose start time is
    * between 6 hours and 2 weeks in the past (OpenAPI-documented window).
    */
-  scoresHistorical(fixtureId: number): Promise<ScoreRecord[]> {
-    return this.get<ScoreRecord[]>(`/scores/historical/${fixtureId}`);
+  async scoresHistorical(fixtureId: number): Promise<ScoreRecord[]> {
+    const raw = await this.get<Record<string, unknown>[]>(`/scores/historical/${fixtureId}`);
+    return raw.map(normalizeScoreRecord);
   }
 
   /** Legacy proof payload for one or two stat keys -> on-chain `validateStat`. */
@@ -84,4 +97,34 @@ export class TxLineClient {
   oddsSnapshot(fixtureId: number, asOfMs?: number): Promise<OddsPayload[]> {
     return this.get<OddsPayload[]>(`/odds/snapshot/${fixtureId}`, { asOf: asOfMs });
   }
+}
+
+/**
+ * Score records arrive camelCased from some endpoints and PascalCased from others
+ * (e.g. /scores/historical SSE frames use `Action`/`Seq`/`Stats`). The docs acknowledge
+ * this ("the payload field may appear as Seq or seq"); normalise to camelCase once here.
+ */
+export function normalizeScoreRecord(raw: Record<string, unknown>): ScoreRecord {
+  const pick = <T>(...keys: string[]): T | undefined => {
+    for (const k of keys) if (raw[k] !== undefined) return raw[k] as T;
+    return undefined;
+  };
+  return {
+    ...(raw as object),
+    fixtureId: pick<number>("fixtureId", "FixtureId")!,
+    gameState: pick<string>("gameState", "GameState") ?? "",
+    startTime: pick<number>("startTime", "StartTime")!,
+    competitionId: pick<number>("competitionId", "CompetitionId")!,
+    participant1Id: pick<number>("participant1Id", "Participant1Id")!,
+    participant2Id: pick<number>("participant2Id", "Participant2Id")!,
+    participant1IsHome: pick<boolean>("participant1IsHome", "Participant1IsHome") ?? true,
+    action: pick<string>("action", "Action") ?? "",
+    ts: pick<number>("ts", "Ts")!,
+    seq: pick<number>("seq", "Seq")!,
+    statusId: pick<number | string>("statusId", "StatusId"),
+    statusSoccerId: pick<number | string>("statusSoccerId", "StatusSoccerId"),
+    period: pick<number>("period", "Period"),
+    confirmed: pick<boolean>("confirmed", "Confirmed"),
+    stats: pick<Record<string, number>>("stats", "Stats"),
+  };
 }

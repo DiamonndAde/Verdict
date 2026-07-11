@@ -29,6 +29,23 @@ devnet IDL (v1.5.6) also ships `validate_stat_v3`. The guide only hints at V3 vi
 index. A short "which validation method should I use" matrix (payload size / feature / status)
 would save integrators time.
 
+## 2026-07-11 — First live integration (devnet)
+
+**Bug/doc mismatch — `/api/token/activate` returns `text/plain`, not JSON.** The response
+body is the bare API token string. The docs' axios examples mask this (`response.data.token
+|| response.data` happens to work on a string), but any client doing `res.json()` breaks.
+Either return `{"token": "..."}` or document the plain-text response.
+
+**Bug/doc mismatch — `/api/scores/historical/{fixtureId}` responds with SSE framing.** The
+OpenAPI spec declares `application/json` array of `Scores`, but the body is Server-Sent-Events
+style `data: {...}` lines. The official `historical_scores.ts` example never parses the body
+(it only logs it), so the example doesn't catch it either. Clients must strip `data:` prefixes
+line by line.
+
+**Delight — World Cup 2026 knockout fixtures live on devnet free tier.** Completed knockout
+matches (with full replay) are available — great for settlement demos while the tournament
+is still running.
+
 **Note — `/api/scores/historical/{fixtureId}` window.** Historical replay only works for
 fixtures whose start time is between 6 hours and 2 weeks in the past. Fine for our demo, but
 worth knowing before you pick a demo fixture: anything older silently falls out of the window.
