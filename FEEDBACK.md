@@ -46,6 +46,25 @@ line by line.
 matches (with full replay) are available — great for settlement demos while the tournament
 is still running.
 
+## 2026-07-12 — Live devnet settlement
+
+**Delight — CPI settlement against the real oracle "just worked" first try on devnet.** After
+proving the flow in LiteSVM against the cloned `txoracle` program + `daily_scores_roots`
+account, the identical flow ran against the live devnet oracle on the first attempt: our
+`settle` CPIs `validate_stat_v2`, reads the verified boolean, and pays out — 992-byte single
+transaction. The cloned-state LiteSVM harness was a faithful stand-in for the live oracle, so
+there were no surprises moving from tests to chain. Credit to the deterministic Merkle design.
+
+**Delight — a tampered proof is rejected by the oracle with a clean, specific error.** Flipping
+one stat value in the proof payload makes `validate_stat_v2` revert with `InvalidStatProof`
+(6023) rather than silently returning a wrong answer — exactly the behaviour a settlement
+integrator wants. The forged settle attempt fails on-chain and the escrow is untouched.
+
+**Minor — devnet faucet rate limits make multi-wallet demos fiddly.** Not TxLINE's remit, but
+worth noting for the hackathon: standing up deployer + two demo wallets + program rent (~2.5
+SOL) against a rate-limited faucet took manual funding. A hackathon-scoped faucet allowance or
+a documented devnet-SOL path in the quickstart would smooth first-run onboarding.
+
 ## 2026-07-11 — Program / CPI build
 
 **Sharp edge — Anchor's typed CPI (`declare_program!`) discards the return-data producer.**
