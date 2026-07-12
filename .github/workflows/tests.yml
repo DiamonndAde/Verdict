@@ -16,9 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24+ is required, not a preference: litesvm 0.8.0's native addon aborts with
+      # `std::bad_alloc` (SIGABRT) on the third BPF program execution under Node 20/22.
+      # Reproduced locally on both; Node 24 runs the suite clean. 0.8.0 is the last
+      # web3.js-compatible litesvm (1.x is a breaking @solana/kit rewrite), so pinning the
+      # runtime is the fix. Mirrored by "engines" in package.json.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies

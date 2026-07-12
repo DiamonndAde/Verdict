@@ -7,6 +7,10 @@
     "packages/*",
     "apps/*"
   ],
+  "//engines": "Node 24+ is required by the test suite: litesvm 0.8.0's native addon aborts with std::bad_alloc on repeated BPF execution under Node 20/22.",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "tsx --test tests/verdict.test.ts",
     "setup-wallets": "tsx scripts/setup-wallets.ts",

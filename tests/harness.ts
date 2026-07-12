@@ -55,14 +55,18 @@ export const DUSDC = (n: number) => new BN(n).mul(new BN(10).pow(new BN(DECIMALS
 
 const verdictIdl = JSON.parse(fs.readFileSync(VERDICT_IDL_PATH, "utf8"));
 
+let cachedProgram: Program | null = null;
+
 /** Anchor Program used purely as an instruction builder (never touches the network). */
 export function verdictProgram(): Program {
+  if (cachedProgram) return cachedProgram;
   const provider = new AnchorProvider(
     new Connection("http://127.0.0.1:8899"),
     new Wallet(Keypair.generate()),
     { commitment: "processed" },
   );
-  return new Program(verdictIdl, provider);
+  cachedProgram = new Program(verdictIdl, provider);
+  return cachedProgram;
 }
 
 export interface Env {
@@ -83,8 +87,30 @@ function fundedKeypair(svm: LiteSVM): Keypair {
   return kp;
 }
 
-/** Boots a fresh, isolated VM with programs, oracle state, mint and funded parties. */
-export function freshEnv(): Env {
+/**
+ * The VM, the programs, the cloned oracle state and the dUSDC mint are immutable across the
+ * suite, so they are built exactly once.
+ *
+ * They used to be rebuilt per test. That allocated a fresh LiteSVM (plus 1.3MB of loaded
+ * programs) 19 times, and the native memory is not reclaimed between instances: on Node 20/22
+ * the third instance aborts the process with `std::bad_alloc` (Node 24 happens to tolerate it,
+ * which is why it only ever failed in CI). Sharing the VM removes the leak outright — and is
+ * far faster.
+ *
+ * Per-test isolation is preserved by `freshEnv()` minting brand-new parties every call: new
+ * keypairs give new token accounts and new market PDAs, so no test can observe another's
+ * state.
+ */
+interface SharedVm {
+  svm: LiteSVM;
+  payer: Keypair;
+  mint: PublicKey;
+}
+let sharedVm: SharedVm | null = null;
+
+function getSharedVm(): SharedVm {
+  if (sharedVm) return sharedVm;
+
   const svm = new LiteSVM();
   svm.addProgramFromFile(VERDICT_PROGRAM_ID, VERDICT_SO);
   svm.addProgramFromFile(TXORACLE_PROGRAM_ID, fx("txoracle.so"));
@@ -106,11 +132,8 @@ export function freshEnv(): Env {
   }
 
   const payer = fundedKeypair(svm);
-  const creator = fundedKeypair(svm);
-  const taker = fundedKeypair(svm);
-  const stranger = fundedKeypair(svm);
 
-  // Create the dUSDC mint via the real token program.
+  // Create the dUSDC mint via the real token program; `payer` keeps mint authority.
   const mintKp = Keypair.generate();
   const mint = mintKp.publicKey;
   const createMintTx = new Transaction().add(
@@ -124,6 +147,24 @@ export function freshEnv(): Env {
     createInitializeMint2Instruction(mint, DECIMALS, payer.publicKey, null),
   );
   sendOk(svm, createMintTx, [payer, mintKp]);
+
+  sharedVm = { svm, payer, mint };
+  return sharedVm;
+}
+
+/** Fresh, isolated parties (and therefore fresh token accounts + market PDAs) per test. */
+export function freshEnv(): Env {
+  const { svm, payer, mint } = getSharedVm();
+
+  // Reset wall-clock to the baseline. The refund_expired test warps time forward; without
+  // this, that warp would leak into every test that runs after it on the shared VM.
+  const clock = svm.getClock();
+  clock.unixTimestamp = 0n;
+  svm.setClock(clock);
+
+  const creator = fundedKeypair(svm);
+  const taker = fundedKeypair(svm);
+  const stranger = fundedKeypair(svm);
 
   const creatorAta = getAssociatedTokenAddressSync(mint, creator.publicKey);
   const takerAta = getAssociatedTokenAddressSync(mint, taker.publicKey);
