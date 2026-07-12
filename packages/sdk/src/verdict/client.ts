@@ -4,6 +4,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-tok
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import type { StoredPredicate } from "./predicate.js";
 import verdictIdl from "./verdict.json" with { type: "json" };
+import { keypairWallet } from "../wallet.js";
 
 export const VERDICT_PROGRAM_ID = new PublicKey((verdictIdl as { address: string }).address);
 export const MARKET_SEED = Buffer.from("market");
@@ -40,7 +41,7 @@ export interface MarketOutcome {
 export function makeVerdictProgram(connection: Connection, wallet?: Keypair): Program {
   const provider = new anchor.AnchorProvider(
     connection,
-    new anchor.Wallet(wallet ?? Keypair.generate()),
+    keypairWallet(wallet ?? Keypair.generate()),
     anchor.AnchorProvider.defaultOptions(),
   );
   return new Program(verdictIdl as anchor.Idl, provider);

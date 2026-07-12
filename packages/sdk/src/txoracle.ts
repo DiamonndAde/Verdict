@@ -11,6 +11,7 @@ import type {
 } from "./types.js";
 import type { Txoracle } from "./txline/txoracle.js";
 import txoracleIdl from "./txline/txoracle.json" with { type: "json" };
+import { keypairWallet } from "./wallet.js";
 
 export const TXORACLE_PROGRAM_ID = new PublicKey((txoracleIdl as { address: string }).address);
 
@@ -24,7 +25,7 @@ export const computeBudgetIx = () =>
 export function makeTxoracleProgram(connection: Connection, wallet: Keypair): Program<Txoracle> {
   const provider = new anchor.AnchorProvider(
     connection,
-    new anchor.Wallet(wallet),
+    keypairWallet(wallet),
     anchor.AnchorProvider.defaultOptions(),
   );
   return new Program<Txoracle>(txoracleIdl as unknown as Txoracle, provider);
