@@ -38,6 +38,14 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
 const fx = (p: string) => path.join(ROOT, "tests/fixtures", p);
 
+/** Prefer a fresh local build; fall back to the committed fixture so CI needs no Anchor. */
+function firstExisting(...candidates: string[]): string {
+  for (const c of candidates) if (fs.existsSync(c)) return c;
+  throw new Error(`none of these paths exist:\n  ${candidates.join("\n  ")}`);
+}
+const VERDICT_SO = firstExisting(path.join(ROOT, "target/deploy/verdict.so"), fx("verdict.so"));
+const VERDICT_IDL_PATH = firstExisting(path.join(ROOT, "target/idl/verdict.json"), fx("verdict-idl.json"));
+
 export const VERDICT_PROGRAM_ID = new PublicKey("GcEBPhKczXmkV6CmPqUQ2TpNS5PnbjL7RECv7yCW5U8e");
 export const TXORACLE_PROGRAM_ID = new PublicKey("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
 export const MARKET_SEED = Buffer.from("market");
@@ -45,7 +53,7 @@ export const DAILY_SCORES_ROOTS_SEED = Buffer.from("daily_scores_roots");
 export const DECIMALS = 6;
 export const DUSDC = (n: number) => new BN(n).mul(new BN(10).pow(new BN(DECIMALS)));
 
-const verdictIdl = JSON.parse(fs.readFileSync(path.join(ROOT, "target/idl/verdict.json"), "utf8"));
+const verdictIdl = JSON.parse(fs.readFileSync(VERDICT_IDL_PATH, "utf8"));
 
 /** Anchor Program used purely as an instruction builder (never touches the network). */
 export function verdictProgram(): Program {
@@ -78,7 +86,7 @@ function fundedKeypair(svm: LiteSVM): Keypair {
 /** Boots a fresh, isolated VM with programs, oracle state, mint and funded parties. */
 export function freshEnv(): Env {
   const svm = new LiteSVM();
-  svm.addProgramFromFile(VERDICT_PROGRAM_ID, path.join(ROOT, "target/deploy/verdict.so"));
+  svm.addProgramFromFile(VERDICT_PROGRAM_ID, VERDICT_SO);
   svm.addProgramFromFile(TXORACLE_PROGRAM_ID, fx("txoracle.so"));
 
   // Load every dumped daily_scores_roots account.

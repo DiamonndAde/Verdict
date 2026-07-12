@@ -1,0 +1,1155 @@
+{
+  "address": "GcEBPhKczXmkV6CmPqUQ2TpNS5PnbjL7RECv7yCW5U8e",
+  "metadata": {
+    "name": "verdict",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "1v1 wagers settled trustlessly by TxLINE cryptographic proof"
+  },
+  "instructions": [
+    {
+      "name": "accept_market",
+      "docs": [
+        "Take the other side, matching the creator's stake. Open -> Active."
+      ],
+      "discriminator": [
+        175,
+        75,
+        176,
+        53,
+        90,
+        68,
+        91,
+        143
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market.creator",
+                "account": "Market"
+              },
+              {
+                "kind": "account",
+                "path": "market.seed",
+                "account": "Market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "taker_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_market",
+      "docs": [
+        "Withdraw an unaccepted challenge. Open -> Cancelled."
+      ],
+      "discriminator": [
+        205,
+        121,
+        84,
+        210,
+        222,
+        71,
+        150,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market.creator",
+                "account": "Market"
+              },
+              {
+                "kind": "account",
+                "path": "market.seed",
+                "account": "Market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "creator_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_market",
+      "docs": [
+        "Open a challenge: escrow the creator's stake behind a predicate on a fixture.",
+        "The creator's side is the predicate being TRUE."
+      ],
+      "discriminator": [
+        103,
+        226,
+        97,
+        235,
+        200,
+        188,
+        251,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Escrow for both stakes. Authority is the market PDA — there is no admin key that can",
+            "move these funds, only the program's own instructions."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "market"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "creator_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seed",
+          "type": "u64"
+        },
+        {
+          "name": "fixture_id",
+          "type": "i64"
+        },
+        {
+          "name": "stake",
+          "type": "u64"
+        },
+        {
+          "name": "predicate",
+          "type": {
+            "defined": {
+              "name": "Predicate"
+            }
+          }
+        },
+        {
+          "name": "settle_after_ms",
+          "type": "i64"
+        },
+        {
+          "name": "expiry_unix",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "refund_expired",
+      "docs": [
+        "Unwind a market that never produced a provable result. Active -> Refunded."
+      ],
+      "discriminator": [
+        118,
+        153,
+        164,
+        244,
+        40,
+        128,
+        242,
+        250
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Permissionless: anyone may trigger the refund. The destinations are pinned to the",
+            "two parties, so a third-party caller can only return money to its rightful owners —",
+            "and the market can always be unwound even if both parties go dark."
+          ],
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market.creator",
+                "account": "Market"
+              },
+              {
+                "kind": "account",
+                "path": "market.seed",
+                "account": "Market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "creator_token_account",
+          "writable": true
+        },
+        {
+          "name": "taker_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Settle against a TxLINE proof. Permissionless. Active -> Settled."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "settler",
+          "docs": [
+            "Permissionless. Winner, loser, or a passing stranger — the settler only pays the fee",
+            "and supplies proof material. They cannot influence who wins: the terms come from the",
+            "market account and the verdict comes from the oracle."
+          ],
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market.creator",
+                "account": "Market"
+              },
+              {
+                "kind": "account",
+                "path": "market.seed",
+                "account": "Market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "creator_token_account",
+          "docs": [
+            "Both parties' token accounts are required up front because the winner is not known",
+            "until the oracle answers. The mint is pinned here; ownership is bound in the handler",
+            "AFTER the status guard resolves the taker, so a settle attempt before acceptance",
+            "fails with a clean `MarketNotActive` rather than a token-account error."
+          ],
+          "writable": true
+        },
+        {
+          "name": "taker_token_account",
+          "writable": true
+        },
+        {
+          "name": "txoracle_program",
+          "docs": [
+            "it is ever invoked. [CPI SAFETY: arbitrary CPI]"
+          ]
+        },
+        {
+          "name": "daily_scores_roots",
+          "docs": [
+            "and re-checked for oracle ownership inside the CPI helper."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "payload",
+          "type": {
+            "defined": {
+              "name": "StatValidationInput"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MarketSettled",
+      "discriminator": [
+        237,
+        212,
+        22,
+        175,
+        201,
+        117,
+        215,
+        99
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MarketNotOpen",
+      "msg": "Market is not awaiting a taker"
+    },
+    {
+      "code": 6001,
+      "name": "MarketNotActive",
+      "msg": "Market is not active"
+    },
+    {
+      "code": 6002,
+      "name": "SelfAccept",
+      "msg": "You cannot accept your own challenge"
+    },
+    {
+      "code": 6003,
+      "name": "ZeroStake",
+      "msg": "Stake must be greater than zero"
+    },
+    {
+      "code": 6004,
+      "name": "NotExpired",
+      "msg": "Market has not expired yet"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidExpiry",
+      "msg": "Expiry must be in the future and after the settlement window opens"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSettleAfter",
+      "msg": "Settlement window must open at a positive timestamp"
+    },
+    {
+      "code": 6007,
+      "name": "EmptyVault",
+      "msg": "Vault is empty"
+    },
+    {
+      "code": 6008,
+      "name": "WrongMint",
+      "msg": "Token account is for the wrong mint"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTokenAccountOwner",
+      "msg": "Token account is not owned by the expected party"
+    },
+    {
+      "code": 6010,
+      "name": "MalformedPredicate",
+      "msg": "Predicate is malformed: a second stat key requires an operator, and vice versa"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidStatKeys",
+      "msg": "Predicate stat keys must be non-zero and distinct"
+    },
+    {
+      "code": 6012,
+      "name": "FixtureMismatch",
+      "msg": "Proof is for a different fixture than this market"
+    },
+    {
+      "code": 6013,
+      "name": "WrongStatCount",
+      "msg": "Proof payload has the wrong number of stats for this market's predicate"
+    },
+    {
+      "code": 6014,
+      "name": "StatKeyMismatch",
+      "msg": "Proven stat key does not match the predicate stored at market creation"
+    },
+    {
+      "code": 6015,
+      "name": "NotFinalRecord",
+      "msg": "Proof is not from the final (game_finalised) record — settlement is not yet provable"
+    },
+    {
+      "code": 6016,
+      "name": "ProofTooEarly",
+      "msg": "Proof predates this market's settlement window"
+    },
+    {
+      "code": 6017,
+      "name": "InconsistentProofTimestamp",
+      "msg": "Proof timestamp is inconsistent with its own summary"
+    },
+    {
+      "code": 6018,
+      "name": "EpochDayOutOfRange",
+      "msg": "Proof timestamp is outside the representable epoch-day range"
+    },
+    {
+      "code": 6019,
+      "name": "ProofTooLarge",
+      "msg": "Proof payload exceeds size limits"
+    },
+    {
+      "code": 6020,
+      "name": "UntrustedOracleProgram",
+      "msg": "Provided program is not the pinned TxLINE oracle"
+    },
+    {
+      "code": 6021,
+      "name": "UntrustedRootsAccount",
+      "msg": "Daily-roots account is not owned by the TxLINE oracle"
+    },
+    {
+      "code": 6022,
+      "name": "WrongRootsAccount",
+      "msg": "Daily-roots account does not match the PDA for this proof's epoch day"
+    },
+    {
+      "code": 6023,
+      "name": "OracleReturnedNothing",
+      "msg": "Oracle CPI returned no data"
+    },
+    {
+      "code": 6024,
+      "name": "SpoofedOracleReturnData",
+      "msg": "Return data was produced by a program other than the pinned TxLINE oracle"
+    },
+    {
+      "code": 6025,
+      "name": "MalformedOracleReturnData",
+      "msg": "Oracle return data is not a well-formed boolean"
+    },
+    {
+      "code": 6026,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "BinaryExpression",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Add"
+          },
+          {
+            "name": "Subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Comparison",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "GreaterThan"
+          },
+          {
+            "name": "LessThan"
+          },
+          {
+            "name": "EqualTo"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed",
+            "docs": [
+              "Creator-chosen nonce; part of the market PDA so one wallet can run many challenges."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "stake",
+            "docs": [
+              "Each side stakes exactly this much; the pot is 2x."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "settle_after_ms",
+            "docs": [
+              "Epoch MILLISECONDS (TxLINE's time base). Proofs whose summary ends before this are",
+              "rejected. Deliberately a different unit from `expiry_unix` — the names carry it."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "expiry_unix",
+            "docs": [
+              "Unix SECONDS (Solana's `Clock` time base). After this, either side can trigger a",
+              "50/50 refund."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "predicate",
+            "type": {
+              "defined": {
+                "name": "Predicate"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MarketStatus"
+              }
+            }
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "Outcome"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "predicate_result",
+            "type": "bool"
+          },
+          {
+            "name": "stat1_value",
+            "type": "i32"
+          },
+          {
+            "name": "stat2_value",
+            "type": {
+              "option": "i32"
+            }
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "settler",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Refunded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome",
+      "docs": [
+        "What the chain recorded when the market settled — the receipt's source of truth."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "predicate_result",
+            "docs": [
+              "The oracle's verdict on the stored predicate."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "stat1_value",
+            "docs": [
+              "The Merkle-proven stat values that produced that verdict."
+            ],
+            "type": "i32"
+          },
+          {
+            "name": "stat2_value",
+            "type": {
+              "option": "i32"
+            }
+          },
+          {
+            "name": "proof_max_ts",
+            "docs": [
+              "Latest timestamp covered by the proven summary (epoch ms) — when the data was final."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "settled_at_unix",
+            "docs": [
+              "When the chain settled it (unix seconds)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Predicate",
+      "docs": [
+        "The wager's terms, fixed at creation and never supplied by a settler.",
+        "",
+        "Mirrors the oracle's own predicate vocabulary (`Comparison`, `BinaryExpression`) so the",
+        "on-chain translation into a validation strategy is an identity mapping — there is no",
+        "intermediate representation in which terms could be misread.",
+        "",
+        "Creator's side is the predicate being TRUE."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat1_key",
+            "docs": [
+              "Periodised TxLINE stat key, e.g. 7 = participant-1 total corners."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "stat2_key",
+            "docs": [
+              "Optional second stat, combined with the first via `op`."
+            ],
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "op",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "BinaryExpression"
+                }
+              }
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "i32"
+          },
+          {
+            "name": "comparison",
+            "type": {
+              "defined": {
+                "name": "Comparison"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProofNode",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_right_sibling",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoreStat",
+      "docs": [
+        "A Merkle-proven statistic. All three fields are inside the hashed leaf, so once the",
+        "oracle verifies the proof, `key`, `value` and `period` are all cryptographically bound —",
+        "which is what makes verdict's key and period gates trustworthy rather than advisory."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": "u32"
+          },
+          {
+            "name": "value",
+            "type": "i32"
+          },
+          {
+            "name": "period",
+            "type": "i32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoresBatchSummary",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "update_stats",
+            "type": {
+              "defined": {
+                "name": "ScoresUpdateStats"
+              }
+            }
+          },
+          {
+            "name": "events_sub_tree_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoresUpdateStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "update_count",
+            "type": "i32"
+          },
+          {
+            "name": "min_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "max_timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatLeaf",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat",
+            "type": {
+              "defined": {
+                "name": "ScoreStat"
+              }
+            }
+          },
+          {
+            "name": "stat_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ProofNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatValidationInput",
+      "docs": [
+        "Exactly the payload `validate_stat_v2` expects. This is the ONLY settler-supplied input",
+        "to `settle` — no predicate terms, no winner, no amounts."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "fixture_summary",
+            "type": {
+              "defined": {
+                "name": "ScoresBatchSummary"
+              }
+            }
+          },
+          {
+            "name": "fixture_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ProofNode"
+                }
+              }
+            }
+          },
+          {
+            "name": "main_tree_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ProofNode"
+                }
+              }
+            }
+          },
+          {
+            "name": "event_stat_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "stats",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "StatLeaf"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
