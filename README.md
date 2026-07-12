@@ -18,12 +18,17 @@ daily root, and a one-tap **re-verify** that re-runs the oracle check client-sid
 
 ## Status
 
+- **Live app**: <https://verdict-self.vercel.app> (devnet). Hit *Watch a live settlement* — it
+  creates, accepts and settles a real challenge on devnet in front of you, then lets you try
+  to forge the result.
 - **Program**: deployed to devnet — `GcEBPhKczXmkV6CmPqUQ2TpNS5PnbjL7RECv7yCW5U8e`
 - **End-to-end proven on-chain**: `npm run demo` runs create → accept → settle-by-proof →
   payout, then a forged-proof attempt that is **rejected on-chain** (`InvalidStatProof`).
+  Transaction-by-transaction evidence in [docs/devnet-run.md](docs/devnet-run.md).
 - **Tests**: 19/19 green (LiteSVM against the real, cloned txoracle program + daily-roots
-  account) — lifecycle, positive settlement, and an exploit/defense suite.
-- **Frontend**: in progress (`apps/web`). Vercel URL will be added here.
+  account) — lifecycle, positive settlement, and an exploit/defense suite. Runs in CI on every
+  push, Node-only. **Requires Node 24+** (litesvm 0.8.0's native addon aborts on repeated BPF
+  execution under Node 20/22).
 
 ## How it works
 

@@ -1,0 +1,21 @@
+# Vercel uploads everything not listed here (it ignores .gitignore once this file exists),
+# so the exclusions below are load-bearing — especially .keys/, which holds devnet wallet
+# secrets and must never leave the machine.
+.keys/
+.env
+.env.*
+
+# Build artifacts / heavy binaries the web build does not need.
+target/
+.anchor/
+node_modules/
+.git/
+tests/
+programs/
+scripts/
+docs/
+.github/
+.claude/
+*.so
+
+# Only apps/web + packages/sdk (+ root manifests and vercel.json) are needed to build.
