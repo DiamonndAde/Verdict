@@ -1,7 +1,25 @@
 # TxLINE API Feedback Log
 
-Running log of friction, bugs, and delights encountered while building Verdict against
-TxLINE devnet. Newest entries at the bottom. Logged as encountered, per submission requirements.
+Running log of friction, bugs and delights hit while building **Verdict** against TxLINE
+devnet — logged as we encountered them, not reconstructed afterwards.
+
+## Summary for the TxLINE team
+
+The three items we'd action first:
+
+| # | Type | Finding |
+| - | ---- | ------- |
+| 1 | **Doc drift (high impact)** | Two period-prefix encodings circulate. An integrator using the stale one would prove **the wrong period's stats** and settle a bet incorrectly. Live data agrees with the current soccer-feed page; the older cheat-sheet does not. |
+| 2 | **Spec mismatch** | `/api/token/activate` returns `text/plain` (a bare token), and `/api/scores/historical/{fixtureId}` returns **SSE framing**, though the OpenAPI spec declares JSON for both. Any client doing `res.json()` breaks. |
+| 3 | **Security note for integrators** | Anchor's typed CPI (`declare_program!`) **discards the return-data producer id**. Anyone CPIing `validate_stat_*` for settlement through that helper is exposed to return-data spoofing. One line in the on-chain-validation guide would prevent a real vulnerability class. |
+
+Also worth a look: `stat-validation-v3` is undocumented; the guide's `setComputeUnitLimit(1_400_000)`
+over-reserves by ~7x (real cost is ~124K–200K CU); and it's worth stating explicitly that
+`validate_stat_v2` **returns `false`** for a failing predicate rather than throwing — that
+distinction is what lets a settlement contract pay the other side instead of reverting.
+
+Biggest delight: the whole settlement path — CPI, Merkle verification, payout — **worked first
+try on devnet** after being proven offline against cloned oracle state. See below.
 
 ---
 
@@ -42,28 +60,14 @@ style `data: {...}` lines. The official `historical_scores.ts` example never par
 (it only logs it), so the example doesn't catch it either. Clients must strip `data:` prefixes
 line by line.
 
+**Note — `/api/scores/historical/{fixtureId}` window.** Historical replay only works for
+fixtures whose start time is between 6 hours and 2 weeks in the past. Fine for our demo, but
+worth knowing before you pick a demo fixture: anything older silently falls out of the window.
+The constraint is documented only in the OpenAPI description of the endpoint.
+
 **Delight — World Cup 2026 knockout fixtures live on devnet free tier.** Completed knockout
 matches (with full replay) are available — great for settlement demos while the tournament
 is still running.
-
-## 2026-07-12 — Live devnet settlement
-
-**Delight — CPI settlement against the real oracle "just worked" first try on devnet.** After
-proving the flow in LiteSVM against the cloned `txoracle` program + `daily_scores_roots`
-account, the identical flow ran against the live devnet oracle on the first attempt: our
-`settle` CPIs `validate_stat_v2`, reads the verified boolean, and pays out — 992-byte single
-transaction. The cloned-state LiteSVM harness was a faithful stand-in for the live oracle, so
-there were no surprises moving from tests to chain. Credit to the deterministic Merkle design.
-
-**Delight — a tampered proof is rejected by the oracle with a clean, specific error.** Flipping
-one stat value in the proof payload makes `validate_stat_v2` revert with `InvalidStatProof`
-(6023) rather than silently returning a wrong answer — exactly the behaviour a settlement
-integrator wants. The forged settle attempt fails on-chain and the escrow is untouched.
-
-**Minor — devnet faucet rate limits make multi-wallet demos fiddly.** Not TxLINE's remit, but
-worth noting for the hackathon: standing up deployer + two demo wallets + program rent (~2.5
-SOL) against a rate-limited faucet took manual funding. A hackathon-scoped faucet allowance or
-a documented devnet-SOL path in the quickstart would smooth first-run onboarding.
 
 ## 2026-07-11 — Program / CPI build
 
@@ -102,7 +106,42 @@ match the 1-2 halftime score; `2007 = 5` matches Participant1's HT corner count;
 matches P1's second-half goal. Anyone settling on the stale mapping would prove the wrong
 period's stats — worth an explicit "encoding changed" callout in the docs.
 
-**Note — `/api/scores/historical/{fixtureId}` window.** Historical replay only works for
-fixtures whose start time is between 6 hours and 2 weeks in the past. Fine for our demo, but
-worth knowing before you pick a demo fixture: anything older silently falls out of the window.
-The constraint is documented only in the OpenAPI description of the endpoint.
+## 2026-07-12 — Live devnet settlement
+
+**Delight — CPI settlement against the real oracle "just worked" first try on devnet.** After
+proving the flow in LiteSVM against the cloned `txoracle` program + `daily_scores_roots`
+account, the identical flow ran against the live devnet oracle on the first attempt: our
+`settle` CPIs `validate_stat_v2`, reads the verified boolean, and pays out — 992-byte single
+transaction. The cloned-state LiteSVM harness was a faithful stand-in for the live oracle, so
+there were no surprises moving from tests to chain. Credit to the deterministic Merkle design.
+
+**Delight — a tampered proof is rejected by the oracle with a clean, specific error.** Flipping
+one stat value in the proof payload makes `validate_stat_v2` revert with `InvalidStatProof`
+(6023) rather than silently returning a wrong answer — exactly the behaviour a settlement
+integrator wants. Sent with preflight skipped, the forged settle lands on-chain as a *failed*
+transaction whose log reads `AnchorError thrown in programs/txoracle/src/utils.rs:302` — the
+oracle itself refusing the forgery. The escrow is untouched. That rejection is the most
+convincing thing in our demo, and it's TxLINE doing the work.
+
+**Minor — devnet faucet rate limits make multi-wallet demos fiddly.** Not TxLINE's remit, but
+worth noting for the hackathon: standing up deployer + two demo wallets + program rent (~2.5
+SOL) against a rate-limited faucet took manual funding. A hackathon-scoped faucet allowance or
+a documented devnet-SOL path in the quickstart would smooth first-run onboarding.
+
+## 2026-07-13 — Settlement semantics (worth documenting)
+
+**Note — a mid-match proof is validly provable, and the oracle will verify it.** This is
+correct behaviour, but it is a trap for settlement integrators: a halftime snapshot verifies
+just as happily as the final one, so a losing party could settle early against a favourable
+in-running state. We confirmed on devnet that the oracle returns `true` for an honest
+mid-match proof of our demo fixture.
+
+The defence is that `period` lives *inside* the hashed Merkle leaf, so it cannot be relabelled
+— we require `period == 100` (`game_finalised`) on every proven leaf and reject anything else
+before the CPI. We verified the field is hash-bound by tampering `period` 100 → 2 in a real
+proof and watching the oracle reject it.
+
+The docs do say to pick the record whose phase matches your condition, but a short, explicit
+**"settling a final result? require `period == 100`"** callout in the on-chain-validation guide
+would make the failure mode much harder to walk into. It's the single most important thing we
+learned building a settlement product on TxLINE.

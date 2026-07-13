@@ -12,6 +12,7 @@ import { describeForgedStats, describeStats } from "@/lib/predicateText";
 import { buildCascade, reVerifyOnChain, tamperProof } from "@/lib/verify";
 import { acceptMarket, demoTaker, settleMarket } from "@/lib/solana";
 import { useMarket } from "@/lib/useMarket";
+import { isDemoMode, usePrefersReducedMotion } from "@/lib/motion";
 
 type Phase = "idle" | "settling" | "fraud";
 
@@ -21,8 +22,15 @@ export function Challenge() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [settleSig, setSettleSig] = useState<string | undefined>();
   const [txConfirmed, setTxConfirmed] = useState(false);
+  const [cascadeDone, setCascadeDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [fraudError, setFraudError] = useState<string>("InvalidStatProof");
+  const reduced = usePrefersReducedMotion();
+  const demo = isDemoMode();
+  // Let the VERIFIED stamp + pulse breathe before the receipt takes over. onDone fires the
+  // instant the stamp mounts, so without a dwell the swap happens in the same commit and the
+  // hero moment is never seen. Reduced motion skips the dwell.
+  const revealDwellMs = reduced ? 0 : demo ? 1600 : 1100;
 
   if (!marketKey) return <Empty text="No challenge specified." />;
   if (loading && !market) return <Skeleton />;
@@ -51,6 +59,7 @@ export function Challenge() {
   const onSettle = async () => {
     setPhase("settling");
     setTxConfirmed(false);
+    setCascadeDone(false);
     try {
       const sig = await settleMarket(demoTaker, market, proof);
       setSettleSig(sig);
@@ -73,21 +82,25 @@ export function Challenge() {
       <FightCard market={market} />
 
       <AnimatePresence mode="wait">
-        {isSettled ? (
-          <motion.div key="receipt" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <Receipt market={market} marketKey={marketKey} proof={proof} settleSig={settleSig} />
-            <Divider className="my-8" />
-            <FraudPanel phase={phase} onFraud={onFraud} forgedProof={forgedProof} forgedLabel={forgedLabel} fraudError={fraudError} />
-          </motion.div>
-        ) : phase === "settling" ? (
+        {/* Hold on the settle cascade until it has BOTH finished animating and confirmed
+            on-chain — otherwise a fast devnet confirmation swaps in the receipt mid-animation
+            and the "VERIFIED ON SOLANA" stamp never lands (the hero moment on video). A cold
+            load of an already-settled market skips this and shows the receipt directly. */}
+        {phase === "settling" && !(cascadeDone && isSettled) ? (
           <motion.div key="settling" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card className="p-6">
               <div className="mb-4 text-center text-xs uppercase tracking-widest text-chalk-faint">
                 Verifying against the on-chain daily root…
               </div>
-              <VerificationCascade nodes={buildCascade(proof, statLabel)} mode="verify" />
+              <VerificationCascade nodes={buildCascade(proof, statLabel)} mode="verify" onDone={() => setTimeout(() => setCascadeDone(true), revealDwellMs)} />
               {!txConfirmed && <div className="mt-4 text-center text-xs text-chalk-dim">settling on devnet…</div>}
             </Card>
+          </motion.div>
+        ) : isSettled ? (
+          <motion.div key="receipt" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+            <Receipt market={market} marketKey={marketKey} proof={proof} settleSig={settleSig} />
+            <Divider className="my-8" />
+            <FraudPanel phase={phase} onFraud={onFraud} forgedProof={forgedProof} forgedLabel={forgedLabel} fraudError={fraudError} />
           </motion.div>
         ) : (
           <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
