@@ -8,7 +8,7 @@ import { buildCascade, reVerifyOnChain } from "@/lib/verify";
 import { fmtDusdc, short, explorerTx } from "@/lib/format";
 import { isDemoMode, scaleDuration, usePrefersReducedMotion } from "@/lib/motion";
 import { away, fixture, home, sides } from "@/lib/appData";
-import { describeConditionFromPredicate } from "@/lib/predicateText";
+import { describeConditionFromPredicate, describeStats } from "@/lib/predicateText";
 import { Button, HashBadge } from "./ui";
 import { VerificationCascade } from "./VerificationCascade";
 
@@ -32,9 +32,7 @@ export function Receipt({ market, marketKey, proof, settleSig }: Props) {
   const creatorWon = outcome.winner.toBase58() === market.creator.toBase58();
   const winnerName = creatorWon ? "CREATOR" : "TAKER";
   const sentence = describeConditionFromPredicate(market.predicate, sides);
-  const statLabel = proof.statsToProve
-    .map((s) => `${(s.key % 1000) <= 2 ? "goals" : "corners"} ${s.value}`)
-    .join(" · ");
+  const statLabel = describeStats(proof.statsToProve, sides);
 
   const reverify = async () => {
     setShowCascade(true);

@@ -7,7 +7,8 @@ import { FightCard } from "@/components/FightCard";
 import { Receipt } from "@/components/Receipt";
 import { VerificationCascade } from "@/components/VerificationCascade";
 import { Button, Card, Divider } from "@/components/ui";
-import { proofForStatKeys } from "@/lib/appData";
+import { proofForStatKeys, sides } from "@/lib/appData";
+import { describeForgedStats, describeStats } from "@/lib/predicateText";
 import { buildCascade, reVerifyOnChain, tamperProof } from "@/lib/verify";
 import { acceptMarket, demoTaker, settleMarket } from "@/lib/solana";
 import { useMarket } from "@/lib/useMarket";
@@ -28,7 +29,11 @@ export function Challenge() {
   if (!market) return <Empty text="Challenge not found on devnet." />;
 
   const proof = proofForStatKeys(predicateStatKeys(market.predicate));
-  const statLabel = proof.statsToProve.map((s) => `${(s.key % 1000) <= 2 ? "goals" : "corners"} ${s.value}`).join(" · ");
+  const statLabel = describeStats(proof.statsToProve, sides);
+  // The forged proof and its label are derived together, so the leaf the cascade breaks on
+  // shows the lie next to the truth ("claims Mexico 15 corners — really 12").
+  const forgedProof = tamperProof(proof);
+  const forgedLabel = describeForgedStats(forgedProof.statsToProve, proof.statsToProve, sides);
   const isSettled = market.status === "settled" && market.outcome;
 
   const onAccept = async () => {
@@ -59,7 +64,7 @@ export function Challenge() {
 
   const onFraud = async () => {
     setPhase("fraud");
-    const res = await reVerifyOnChain(tamperProof(proof), market.predicate);
+    const res = await reVerifyOnChain(forgedProof, market.predicate);
     setFraudError(res.errorName ?? "InvalidStatProof");
   };
 
@@ -72,7 +77,7 @@ export function Challenge() {
           <motion.div key="receipt" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
             <Receipt market={market} marketKey={marketKey} proof={proof} settleSig={settleSig} />
             <Divider className="my-8" />
-            <FraudPanel phase={phase} onFraud={onFraud} proof={proof} statLabel={statLabel} fraudError={fraudError} />
+            <FraudPanel phase={phase} onFraud={onFraud} forgedProof={forgedProof} forgedLabel={forgedLabel} fraudError={fraudError} />
           </motion.div>
         ) : phase === "settling" ? (
           <motion.div key="settling" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -87,12 +92,12 @@ export function Challenge() {
         ) : (
           <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {market.status === "open" && (
-              <Card className="flex items-center justify-between gap-4 p-6">
+              <Card className="flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center">
                 <div>
                   <div className="display text-lg font-semibold text-chalk">Take the other side</div>
                   <div className="text-sm text-chalk-dim">Match the stake to lock in the bet.</div>
                 </div>
-                <Button onClick={onAccept} disabled={busy}>
+                <Button onClick={onAccept} disabled={busy} className="w-full shrink-0 whitespace-nowrap sm:w-auto">
                   {busy ? "Accepting…" : "Accept challenge"}
                 </Button>
               </Card>
@@ -121,19 +126,20 @@ export function Challenge() {
 function FraudPanel({
   phase,
   onFraud,
-  proof,
-  statLabel,
+  forgedProof,
+  forgedLabel,
   fraudError,
 }: {
   phase: Phase;
   onFraud: () => void;
-  proof: ReturnType<typeof proofForStatKeys>;
-  statLabel: string;
+  forgedProof: ReturnType<typeof proofForStatKeys>;
+  forgedLabel: string;
   fraudError: string;
 }) {
   return (
     <Card className="border-flag-red/20 p-6">
-      <div className="flex items-center justify-between gap-4">
+      {/* Stacks on narrow screens — side by side, the button squeezed to three lines. */}
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <div className="display text-lg font-semibold text-chalk">Try to forge this result</div>
           <div className="text-sm text-chalk-dim">
@@ -141,7 +147,7 @@ function FraudPanel({
           </div>
         </div>
         {phase !== "fraud" && (
-          <Button variant="danger" onClick={onFraud}>
+          <Button variant="danger" onClick={onFraud} className="w-full shrink-0 whitespace-nowrap sm:w-auto">
             Forge the proof
           </Button>
         )}
@@ -149,7 +155,7 @@ function FraudPanel({
       <AnimatePresence>
         {phase === "fraud" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-            <VerificationCascade nodes={buildCascade(tamperProof(proof), statLabel)} mode="fraud" breakAt={1} errorName={fraudError} />
+            <VerificationCascade nodes={buildCascade(forgedProof, forgedLabel)} mode="fraud" breakAt={1} errorName={fraudError} />
             <p className="mt-4 text-center text-xs text-chalk-dim">
               The tampered value breaks the Merkle leaf hash, so the TxLINE oracle rejects it
               inside the settle CPI. The escrow is never touched.

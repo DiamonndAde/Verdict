@@ -15,6 +15,7 @@ import { after, before, describe, it } from "node:test";
 import { Transaction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
+import { defaultExpiryUnix } from "@verdict/sdk/verdict";
 import {
   acceptMarketIx,
   computeIx,
@@ -76,6 +77,31 @@ async function settle(env: Env, seed: number, payload: unknown, minTs: number, o
 
 describe("verdict", () => {
   describe("LIFECYCLE", () => {
+    it("the SDK's default expiry still creates a market long after a historical kickoff", async () => {
+      // Regression: defaultExpiryUnix used to be kickoff + 7 days. Our demo fixture kicked off
+      // on 2026-07-06, so from 2026-07-13 that deadline was already in the past and every new
+      // challenge died with InvalidExpiry — a time bomb that broke the live site on a clock,
+      // with no code change. The rest of the suite runs at unixTimestamp 0, so it could never
+      // catch this; here we advance the VM clock to a realistic "now" well past kickoff.
+      const env = freshEnv();
+      const nowMs = KICKOFF_MS + 45 * 86_400_000; // 45 days after the match
+      const clock = env.svm.getClock();
+      clock.unixTimestamp = BigInt(Math.floor(nowMs / 1000));
+      env.svm.setClock(clock);
+
+      const expiryUnix = defaultExpiryUnix(KICKOFF_MS, nowMs);
+      assert.ok(expiryUnix > Math.floor(nowMs / 1000), "default expiry must be in the future");
+
+      sendOk(
+        env.svm,
+        new Transaction().add(
+          await createMarketIx(env, { ...baseCreate(90, CORNERS_OVER_9), expiryUnix }),
+        ),
+        [env.creator],
+      );
+      assert.equal(fetchMarket(env, new BN(90)).status.open !== undefined, true);
+    });
+
     it("create escrows the creator's stake and opens the market", async () => {
       const env = freshEnv();
       const before = tokenBalance(env.svm, env.creatorAta);

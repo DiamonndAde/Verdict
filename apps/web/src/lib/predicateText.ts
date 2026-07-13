@@ -46,3 +46,44 @@ function homeName(s: FixtureSides): string {
 function awayName(s: FixtureSides): string {
   return s.participant1IsHome ? s.participant2 : s.participant1;
 }
+
+/** Odd base keys belong to participant 1, even to participant 2 (TxLINE soccer encoding). */
+function statTeam(base: number, sides: FixtureSides): string {
+  return base % 2 === 1 ? sides.participant1 : sides.participant2;
+}
+
+export interface ProvenStat {
+  key: number;
+  value: number;
+}
+
+/**
+ * Attributes proven stats to the teams that earned them: "Mexico 12 · England 2 corners".
+ * A bare "corners 12 · corners 2" tells a viewer nothing about who did what — and the receipt
+ * is the product, so the numbers have to read like a scoreboard. The metric is named once when
+ * both stats share it, and per-stat otherwise.
+ */
+export function describeStats(stats: ProvenStat[], sides: FixtureSides): string {
+  const parts = stats.map((s) => {
+    const base = s.key % 1000;
+    return { team: statTeam(base, sides), metric: METRIC_BY_BASE[base] ?? "stat", value: s.value };
+  });
+  const metrics = new Set(parts.map((p) => p.metric));
+  if (metrics.size === 1) {
+    return `${parts.map((p) => `${p.team} ${p.value}`).join(" · ")} ${[...metrics][0]}`;
+  }
+  return parts.map((p) => `${p.team} ${p.value} ${p.metric}`).join(" · ");
+}
+
+/**
+ * The forged leaf's label, for the fraud cascade: "claims Mexico 15 corners — really 12".
+ * Showing the original values there would hide the whole point of the demo; the viewer must
+ * see the lie next to the truth at the exact node where the chain catches it.
+ */
+export function describeForgedStats(tampered: ProvenStat[], original: ProvenStat[], sides: FixtureSides): string {
+  const i = tampered.findIndex((s, idx) => s.value !== original[idx]?.value);
+  if (i === -1) return describeStats(tampered, sides);
+  const base = tampered[i].key % 1000;
+  const metric = METRIC_BY_BASE[base] ?? "stat";
+  return `claims ${statTeam(base, sides)} ${tampered[i].value} ${metric} — really ${original[i].value}`;
+}

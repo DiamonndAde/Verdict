@@ -73,7 +73,7 @@ export function buildCascade(proof: StatValidationV2, statLabel: string): Cascad
     {
       id: "subtree",
       label: "Fixture sub-tree root",
-      sublabel: `${proof.subTreeProof.length} hops`,
+      sublabel: `${proof.subTreeProof.length} ${proof.subTreeProof.length === 1 ? "hop" : "hops"}`,
       hashHex: toHex(proof.summary.eventStatsSubTreeRoot),
       hops: proof.subTreeProof.length,
     },

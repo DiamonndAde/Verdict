@@ -42,6 +42,7 @@ async function main() {
   await page.getByText("Watch a live settlement").click();
   console.log("  waiting for create+accept on devnet…");
   await page.waitForURL("**/c/**", { timeout: 60000 });
+  const marketUrl = page.url();
   await page.waitForTimeout(2500);
   await shot(page, "03-fight-card");
 
@@ -66,6 +67,24 @@ async function main() {
   await forge.click();
   await page.waitForTimeout(3000);
   await shot(page, "07-fraud-rejected");
+  await page.close();
+
+  // Mobile-width pass (iPhone-ish 390×844) on the three key surfaces, reusing the settled
+  // market so we don't create more devnet state.
+  console.log("  mobile-width pass…");
+  const m = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  m.on("console", (e) => { if (e.type() === "error") consoleErrors.push(`[mobile] ${e.text()}`); });
+  m.on("pageerror", (e) => consoleErrors.push(`[mobile] pageerror: ${e.message}`));
+  await m.goto(`${BASE}/?demo=1`, { waitUntil: "networkidle" });
+  await m.waitForTimeout(900);
+  await shot(m, "08-home-mobile");
+  await m.goto(`${marketUrl}${marketUrl.includes("?") ? "&" : "?"}demo=1`, { waitUntil: "networkidle" });
+  await m.waitForSelector("text=SETTLEMENT RECEIPT", { timeout: 60000 });
+  await m.waitForTimeout(1500);
+  await shot(m, "09-fight-card-mobile");
+  await m.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await m.waitForTimeout(800);
+  await shot(m, "10-receipt-mobile");
 
   await browser.close();
 

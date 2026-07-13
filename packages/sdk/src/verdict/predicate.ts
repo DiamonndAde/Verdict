@@ -140,9 +140,19 @@ export function defaultSettleAfterMs(kickoffMs: number, extraTimePossible = fals
   return kickoffMs + minutes * 60_000;
 }
 
-/** Convenience: default expiry (kickoff + 7 days) as unix seconds. */
-export function defaultExpiryUnix(kickoffMs: number): number {
-  return Math.floor(kickoffMs / 1000) + 7 * 86_400;
+/**
+ * Default refund deadline, as unix seconds: 7 days of head-room to get a proof in.
+ *
+ * Anchored to whichever is LATER, kickoff or now. Anchoring purely to kickoff is a time bomb
+ * for historical replay: our demo fixture kicked off on 2026-07-06, so from 2026-07-13 the
+ * "kickoff + 7 days" deadline is already in the past and `create_market` correctly rejects the
+ * market with `InvalidExpiry` — every new challenge would fail, on a clock, with no code
+ * change. The market is created *now*, so the deadline has to be measured from now.
+ */
+export function defaultExpiryUnix(kickoffMs: number, nowMs: number = Date.now()): number {
+  const kickoffSec = Math.floor(kickoffMs / 1000);
+  const nowSec = Math.floor(nowMs / 1000);
+  return Math.max(kickoffSec, nowSec) + 7 * 86_400;
 }
 
 export function toBN(n: number): BN {
