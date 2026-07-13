@@ -10,6 +10,7 @@ import { PredicateBuilder } from "@/components/PredicateBuilder";
 import { Button, Card } from "@/components/ui";
 import { fixture, sides } from "@/lib/appData";
 import { BN, createMarket, demoCreator } from "@/lib/solana";
+import { setDemoRole } from "@/lib/demoRole";
 
 export function Create() {
   const navigate = useNavigate();
@@ -35,6 +36,9 @@ export function Create() {
         settleAfterMs: defaultSettleAfterMs(fixture.startTime),
         expiryUnix: defaultExpiryUnix(fixture.startTime),
       });
+      // This tab created the challenge, so it is the creator; the opponent opens the link
+      // in another tab (a fresh session that defaults to taker).
+      setDemoRole("creator");
       navigate(`/c/${market.toBase58()}`);
     } catch (err) {
       alert(`Create failed: ${String(err).slice(0, 200)}`);

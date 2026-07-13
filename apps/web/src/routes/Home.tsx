@@ -5,6 +5,7 @@ import { away, fixture, home } from "@/lib/appData";
 import { compilePredicate, type Condition } from "@verdict/sdk/verdict";
 import { sides } from "@/lib/appData";
 import { BN, acceptMarket, createMarket, demoCreator, demoTaker } from "@/lib/solana";
+import { setDemoRole } from "@/lib/demoRole";
 import { defaultExpiryUnix, defaultSettleAfterMs } from "@verdict/sdk/verdict";
 import { spring } from "@/lib/motion";
 import { Button, Card, VoltText } from "@/components/ui";
@@ -31,6 +32,9 @@ export function Home() {
       });
       setLaunching("Opponent accepting…");
       await acceptMarket(demoTaker, market);
+      // The one-tab "just watch" path plays both sides, then hands you the settle — which the
+      // losing taker triggers, so land as the taker.
+      setDemoRole("taker");
       navigate(`/c/${market.toBase58()}`);
     } catch (err) {
       setLaunching(null);

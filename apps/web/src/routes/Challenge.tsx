@@ -13,6 +13,7 @@ import { buildCascade, reVerifyOnChain, tamperProof } from "@/lib/verify";
 import { acceptMarket, demoTaker, settleMarket } from "@/lib/solana";
 import { useMarket } from "@/lib/useMarket";
 import { isDemoMode, usePrefersReducedMotion } from "@/lib/motion";
+import { roleWallet, useDemoRole } from "@/lib/demoRole";
 
 type Phase = "idle" | "settling" | "fraud";
 
@@ -27,6 +28,7 @@ export function Challenge() {
   const [fraudError, setFraudError] = useState<string>("InvalidStatProof");
   const reduced = usePrefersReducedMotion();
   const demo = isDemoMode();
+  const role = useDemoRole();
   // Let the VERIFIED stamp + pulse breathe before the receipt takes over. onDone fires the
   // instant the stamp mounts, so without a dwell the swap happens in the same commit and the
   // hero moment is never seen. Reduced motion skips the dwell.
@@ -61,7 +63,9 @@ export function Challenge() {
     setTxConfirmed(false);
     setCascadeDone(false);
     try {
-      const sig = await settleMarket(demoTaker, market, proof);
+      // Whoever is settling signs — permissionless. In the scripted demo the losing taker
+      // settles, which is the point: the proof, not the settler, decides the winner.
+      const sig = await settleMarket(roleWallet(role), market, proof);
       setSettleSig(sig);
       setTxConfirmed(true);
       await refresh();
@@ -104,7 +108,9 @@ export function Challenge() {
           </motion.div>
         ) : (
           <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {market.status === "open" && (
+            {/* An open market shows different actions per side: the taker takes the bet; the
+                creator can't take their own, so they get the shareable link instead. */}
+            {market.status === "open" && role === "taker" && (
               <Card className="flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center">
                 <div>
                   <div className="display text-lg font-semibold text-chalk">Take the other side</div>
@@ -113,6 +119,18 @@ export function Challenge() {
                 <Button onClick={onAccept} disabled={busy} className="w-full shrink-0 whitespace-nowrap sm:w-auto">
                   {busy ? "Accepting…" : "Accept challenge"}
                 </Button>
+              </Card>
+            )}
+            {market.status === "open" && role === "creator" && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2">
+                  <span className="size-2 shrink-0 animate-pulse rounded-full bg-volt" />
+                  <div className="display text-lg font-semibold text-chalk">Waiting for an opponent</div>
+                </div>
+                <div className="mt-1 text-sm text-chalk-dim">
+                  Your stake is escrowed. Send this link to whoever wants the other side.
+                </div>
+                <ShareLink />
               </Card>
             )}
             {market.status === "active" && (
@@ -177,6 +195,36 @@ function FraudPanel({
         )}
       </AnimatePresence>
     </Card>
+  );
+}
+
+/** Copy the challenge URL. Carries ?demo=1 in a demo session so the opener lands in demo mode
+ *  too — otherwise their fresh window would miss the role chip and the paced animations. */
+function ShareLink() {
+  const [copied, setCopied] = useState(false);
+  let url = "";
+  if (typeof window !== "undefined") {
+    const u = new URL(window.location.href);
+    if (isDemoMode()) u.searchParams.set("demo", "1");
+    url = u.toString();
+  }
+  const copy = () => {
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    });
+  };
+  return (
+    <button
+      onClick={copy}
+      title={url}
+      className="group mt-4 flex w-full items-center justify-between gap-3 rounded-lg border border-line bg-pitch-950/60 px-3 py-2.5 text-left mono text-xs text-chalk-dim hover:border-volt/40"
+    >
+      <span className="truncate">{url}</span>
+      <span className={`shrink-0 text-[11px] font-semibold ${copied ? "text-volt" : "text-chalk-faint group-hover:text-volt/80"}`}>
+        {copied ? "copied ✓" : "copy link"}
+      </span>
+    </button>
   );
 }
 

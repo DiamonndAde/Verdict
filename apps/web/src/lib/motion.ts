@@ -14,10 +14,27 @@ export function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-/** `?demo=1` slows the hero animations ~20% so they read clearly on video. */
+/**
+ * `?demo=1` slows the hero animations ~20% so they read clearly on video. Once seen, it is
+ * remembered for the session, so SPA navigations that drop the query param (e.g. create →
+ * challenge) stay in demo mode. Sharing a challenge from a demo session carries the param on
+ * the link (see ShareLink), so the opener's fresh session picks it up here.
+ */
 export function isDemoMode(): boolean {
   if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("demo") === "1";
+  if (new URLSearchParams(window.location.search).get("demo") === "1") {
+    try {
+      sessionStorage.setItem("verdict-demo", "1");
+    } catch {
+      /* ignore */
+    }
+    return true;
+  }
+  try {
+    return sessionStorage.getItem("verdict-demo") === "1";
+  } catch {
+    return false;
+  }
 }
 
 /** Scale a duration by demo mode (slower) / reduced motion (near-instant). */
