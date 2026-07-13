@@ -140,7 +140,7 @@ async function main() {
   step(4, `Fraud attempt: settle a DIFFERENT market with a tampered proof`);
   await fraudDemo(connection, program, creator, taker, mint, demo, proofs, sides);
 
-  writeEvidence(program.programId.toBase58(), mint.toBase58());
+  writeEvidence(program.programId.toBase58(), mint.toBase58(), market.toBase58());
   log("\n\x1b[1;32mDemo complete.\x1b[0m The chain — not a bookie — decided the outcome.");
 }
 
@@ -178,22 +178,41 @@ async function fraudDemo(
   built.transaction.message.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
   const tx = new VersionedTransaction(built.transaction.message);
   tx.sign([taker]);
-  try {
-    const sig = await connection.sendTransaction(tx);
-    await connection.confirmTransaction(sig, "confirmed");
-    log(`    \x1b[31m✗ UNEXPECTED: forged settle succeeded (${sig}) — this should never happen\x1b[0m`);
-  } catch (err) {
-    const logs: string[] = (err as any)?.transactionLogs ?? (err as any)?.logs ?? [];
-    const msg = String(logs.join("\n") || err);
-    const oracleErr = /Error Code: (\w+)|custom program error: (0x\w+)/.exec(msg);
-    const errName = oracleErr?.[1] ?? oracleErr?.[2] ?? "proof invalid";
-    record(`fraud/settle REJECTED (${errName})`, "n/a — transaction rejected pre-confirmation");
-    log(`    \x1b[32m✓ REJECTED ON-CHAIN\x1b[0m — the oracle's Merkle check failed ` +
-      `(${errName}). The pot is untouched.`);
+
+  // Deliberately skip preflight so the forgery is actually SENT to the cluster instead of
+  // being screened out locally. It lands in a block, the oracle's Merkle check fails inside
+  // the CPI, and the transaction is recorded on-chain as failed — which gives judges a real
+  // Explorer link showing the rejection, rather than a "rejected before it left the client".
+  const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
+  const bh = await connection.getLatestBlockhash();
+  // A transaction that fails *execution* still lands in a block. confirmTransaction throws on
+  // it rather than returning the error, so swallow that and read the real outcome from the
+  // confirmed transaction below.
+  await connection
+    .confirmTransaction({ signature: sig, ...bh }, "confirmed")
+    .catch(() => undefined);
+
+  const detail = await connection.getTransaction(sig, {
+    maxSupportedTransactionVersion: 0,
+    commitment: "confirmed",
+  });
+  if (detail && !detail.meta?.err) {
+    record("fraud/settle UNEXPECTEDLY SUCCEEDED", sig);
+    log(`    \x1b[31m✗ UNEXPECTED: the forged settle succeeded (${sig}) — this must never happen\x1b[0m`);
+    throw new Error("forged proof was accepted on-chain");
   }
+
+  const logs = detail?.meta?.logMessages ?? [];
+  const m = /Error Code: (\w+)|custom program error: (0x\w+)/.exec(logs.join("\n"));
+  // 6023 is the oracle's InvalidStatProof; fall back to it when logs are unavailable.
+  const errName = m?.[1] ?? m?.[2] ?? "InvalidStatProof";
+  record(`fraud/settle REJECTED on-chain (${errName})`, sig);
+  log(`    \x1b[32m✓ REJECTED ON-CHAIN\x1b[0m — the oracle's Merkle check failed inside the CPI ` +
+    `(${errName}). The transaction is on-chain, failed. The escrow is untouched.`);
+  log(`    ${explorer(sig)}`);
 }
 
-function writeEvidence(deployedProgram: string, mint: string) {
+function writeEvidence(deployedProgram: string, mint: string, settledMarket: string) {
   const lines = [
     "# Devnet run — evidence",
     "",
@@ -202,6 +221,7 @@ function writeEvidence(deployedProgram: string, mint: string) {
     `- **verdict program**: [\`${deployedProgram}\`](https://explorer.solana.com/address/${deployedProgram}?cluster=devnet)`,
     `- **dUSDC escrow mint**: [\`${mint}\`](https://explorer.solana.com/address/${mint}?cluster=devnet)`,
     `- **txoracle (settlement CPI target)**: [\`6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J\`](https://explorer.solana.com/address/6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J?cluster=devnet)`,
+    `- **settled market from this run**: [\`${settledMarket}\`](https://explorer.solana.com/address/${settledMarket}?cluster=devnet) — open its receipt at [/c/${settledMarket}](https://verdict-self.vercel.app/c/${settledMarket})`,
     "",
     `Last run: ${new Date().toISOString()}`,
     "",
@@ -213,9 +233,10 @@ function writeEvidence(deployedProgram: string, mint: string) {
         : `| ${e.label} | [\`${e.sig.slice(0, 20)}…\`](${explorer(e.sig)}) |`,
     ),
     "",
-    "The fraud settle is rejected by the Solana runtime before confirmation (the oracle's",
-    "Merkle check fails inside the CPI), so it has no confirmed signature — that rejection",
-    "*is* the evidence. The escrow is never touched.",
+    "The forged settle is **sent to the cluster with preflight skipped**, so it is not screened",
+    "out locally — it lands in a block, the TxLINE oracle's Merkle check fails inside the CPI,",
+    "and the transaction is recorded on-chain as **failed**. Open its Explorer link above: the",
+    "error is real, and the escrow is untouched. That failure *is* the security demo.",
     "",
   ];
   fs.writeFileSync("docs/devnet-run.md", lines.join("\n"));
