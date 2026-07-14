@@ -127,6 +127,27 @@ async function main() {
   fs.writeFileSync("apps/web/src/data/live-proofs.json", JSON.stringify(proofs, null, 2));
 
   const corners = proofs.v2CornersFinal.statsToProve.reduce((s, x) => s + x.value, 0);
+
+  // Stamp the final result onto the fixture. This is what flips its state to COMPLETED in the
+  // UI, so the card and the receipt show a real score instead of an em dash.
+  try {
+    const finalRec = (await client.scoresSnapshot(fixtureId)).find((r) => r.action === "game_finalised") as
+      | (Record<string, unknown> & { stats?: Record<string, number> })
+      | undefined;
+    const st = finalRec?.stats ?? {};
+    const completed = {
+      ...live,
+      finalSeq,
+      finalisedTs: finalRecordTs,
+      goals: st["1"] != null && st["2"] != null ? `${st["1"]}-${st["2"]}` : undefined,
+      corners: st["7"] != null && st["8"] != null ? Number(st["7"]) + Number(st["8"]) : corners,
+    };
+    fs.writeFileSync("tests/fixtures/live-fixture.json", JSON.stringify(completed, null, 2));
+    fs.writeFileSync("apps/web/src/data/live-fixture.json", JSON.stringify(completed, null, 2));
+    console.log(`\nfinal result recorded: ${completed.goals ?? "?"}  corners ${completed.corners}`);
+  } catch (err) {
+    console.log(`could not stamp final result onto the fixture: ${String(err).slice(0, 120)}`);
+  }
   const report = [
     "# Live-match settle latency — France vs Spain",
     "",

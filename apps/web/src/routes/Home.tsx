@@ -1,13 +1,14 @@
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { away, fixture, home } from "@/lib/appData";
+import { away, fixture, home, isDemoFixture } from "@/lib/appData";
 import { compilePredicate, type Condition } from "@verdict/sdk/verdict";
 import { sides } from "@/lib/appData";
 import { BN, acceptMarket, createMarket, demoCreator, demoTaker } from "@/lib/solana";
 import { setDemoRole } from "@/lib/demoRole";
 import { defaultExpiryUnix, defaultSettleAfterMs } from "@verdict/sdk/verdict";
 import { spring } from "@/lib/motion";
+import { dash, fixtureState, kickoffLabel, stateLabel } from "@/lib/fixtureState";
 import { Button, Card, VoltText } from "@/components/ui";
 
 export function Home() {
@@ -79,28 +80,63 @@ export function Home() {
         </motion.div>
       </section>
 
-      <Card className="p-6">
-        <div className="text-[11px] uppercase tracking-widest text-chalk-faint">Demo fixture · completed</div>
-        <div className="mt-2 flex items-center justify-between gap-4">
-          <div className="display text-2xl font-semibold text-chalk">
-            {home} <span className="text-chalk-faint">vs</span> {away}
-          </div>
-          <div className="text-right">
-            <div className="display text-2xl font-bold text-volt tabular-nums">{fixture.goals}</div>
-            <div className="text-[10px] uppercase tracking-widest text-chalk-faint">full time</div>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-3 text-center">
-          <Metric label="Corners" value={String(fixture.corners)} />
-          <Metric label="Competition" value={fixture.competition} />
-          <Metric label="Fixture" value={`#${fixture.fixtureId}`} />
-        </div>
-        <p className="mt-4 text-xs text-chalk-faint">
-          Historical replay — the match is already finished, so settlement runs against its real
-          final TxLINE record on camera. No live game required.
-        </p>
-      </Card>
+      <FixtureCard />
     </div>
+  );
+}
+
+/**
+ * The hero fixture card, rendered for what the match ACTUALLY is. It used to assume every
+ * fixture was a finished historical one, so an upcoming match showed "FULL TIME" and
+ * "CORNERS undefined".
+ */
+function FixtureCard() {
+  const state = fixtureState(fixture);
+  const completed = state === "completed";
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-2">
+        {state === "live" && (
+          <span className="size-2 animate-pulse rounded-full bg-volt shadow-[0_0_8px_2px_rgba(199,249,78,0.6)]" />
+        )}
+        <div className="text-[11px] uppercase tracking-widest text-chalk-faint">
+          {stateLabel(fixture, isDemoFixture, state)}
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-4">
+        <div className="display text-2xl font-semibold text-chalk">
+          {home} <span className="text-chalk-faint">vs</span> {away}
+        </div>
+        <div className="text-right">
+          {completed ? (
+            <>
+              <div className="display text-2xl font-bold text-volt tabular-nums">{dash(fixture.goals)}</div>
+              <div className="text-[10px] uppercase tracking-widest text-chalk-faint">full time</div>
+            </>
+          ) : state === "live" ? (
+            <div className="display text-lg font-bold text-volt">In play</div>
+          ) : (
+            <div className="display text-sm font-semibold text-chalk">{kickoffLabel(fixture.startTime)}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+        <Metric label="Corners" value={completed ? dash(fixture.corners) : "—"} />
+        <Metric label="Competition" value={dash(fixture.competition)} />
+        <Metric label="Fixture" value={`#${dash(fixture.fixtureId)}`} />
+      </div>
+
+      <p className="mt-4 text-xs text-chalk-faint">
+        {completed
+          ? "Historical replay — the match is already finished, so settlement runs against its real final TxLINE record on camera. No live game required."
+          : state === "live"
+            ? "Settlement unlocks at the final whistle — no one can settle early."
+            : "Live wager — create and share before kickoff. Settlement unlocks the moment the final record lands on-chain."}
+      </p>
+    </Card>
   );
 }
 

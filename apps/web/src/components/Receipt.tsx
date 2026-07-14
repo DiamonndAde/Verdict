@@ -8,6 +8,7 @@ import { buildCascade, reVerifyOnChain } from "@/lib/verify";
 import { fmtDusdc, short, explorerTx } from "@/lib/format";
 import { isDemoMode, scaleDuration, usePrefersReducedMotion } from "@/lib/motion";
 import { away, fixture, home, sides } from "@/lib/appData";
+import { dash } from "@/lib/fixtureState";
 import { describeConditionFromPredicate, describeStats } from "@/lib/predicateText";
 import { Button, HashBadge } from "./ui";
 import { VerificationCascade } from "./VerificationCascade";
@@ -76,12 +77,12 @@ export function Receipt({ market, marketKey, proof, settleSig }: Props) {
             <div className="mt-4 flex items-center justify-between gap-4">
               <TeamName name={home} align="left" />
               <div className="text-center">
-                <div className="display text-3xl font-bold tabular-nums text-chalk">{fixture.goals}</div>
+                <div className="display text-3xl font-bold tabular-nums text-chalk">{dash(fixture.goals)}</div>
                 <div className="text-[10px] uppercase tracking-widest text-chalk-faint">full time</div>
               </div>
               <TeamName name={away} align="right" />
             </div>
-            <div className="mt-2 text-center text-[11px] text-chalk-dim">{fixture.competition}</div>
+            <div className="mt-2 text-center text-[11px] text-chalk-dim">{dash(fixture.competition)}</div>
           </div>
 
           <Perforation />

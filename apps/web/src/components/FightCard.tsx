@@ -5,10 +5,12 @@ import { away, fixture, home, sides } from "@/lib/appData";
 import { describeConditionFromPredicate } from "@/lib/predicateText";
 import { fmtDusdc, short } from "@/lib/format";
 import { softSpring, spring } from "@/lib/motion";
+import { dash, fixtureState, kickoffLabel } from "@/lib/fixtureState";
 import { Chip, Identicon } from "./ui";
 
 /** The challenge as a boxing "fight card": creator left, taker right, VS divider. */
 export function FightCard({ market }: { market: MarketAccount }) {
+  const state = fixtureState(fixture);
   const sentence = describeConditionFromPredicate(market.predicate, sides);
   const stake = fmtDusdc(market.stake.toString());
   const pot = market.taker ? fmtDusdc(market.stake.mul(new BN(2)).toString()) : stake;
@@ -18,9 +20,28 @@ export function FightCard({ market }: { market: MarketAccount }) {
     <div className="relative overflow-hidden rounded-2xl border border-line">
       <div className="pitch-lines absolute inset-0" aria-hidden />
       <div className="relative px-6 py-6">
-        <div className="mb-1 text-center text-[11px] uppercase tracking-[0.3em] text-chalk-faint">{fixture.competition}</div>
-        <div className="mb-5 text-center display text-lg font-semibold text-chalk">
+        <div className="mb-1 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.3em] text-chalk-faint">
+          {state === "live" && (
+            <span className="size-1.5 animate-pulse rounded-full bg-volt shadow-[0_0_8px_2px_rgba(199,249,78,0.6)]" />
+          )}
+          <span>{dash(fixture.competition)}</span>
+          <span className="text-chalk-faint/60">·</span>
+          <span className={state === "live" ? "text-volt" : ""}>{state}</span>
+        </div>
+        <div className="mb-1 text-center display text-lg font-semibold text-chalk">
           {home} <span className="text-chalk-faint">vs</span> {away}
+        </div>
+        {/* Only a finished match has a full-time score; an upcoming one shows its kickoff. */}
+        <div className="mb-5 text-center text-xs text-chalk-dim">
+          {state === "completed" ? (
+            <span className="tabular-nums">
+              {dash(fixture.goals)} <span className="text-chalk-faint">full time</span>
+            </span>
+          ) : state === "live" ? (
+            <span className="text-volt">In play</span>
+          ) : (
+            kickoffLabel(fixture.startTime)
+          )}
         </div>
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">

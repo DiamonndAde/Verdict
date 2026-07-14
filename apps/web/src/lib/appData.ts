@@ -70,6 +70,8 @@ export const fixture: DemoFixture = FIXTURES[resolveFixtureId()] ?? DEMO;
 
 /** Whether the current selection is something other than the default historical fixture. */
 export const isLiveFixture = fixture.fixtureId !== DEMO.fixtureId;
+/** Only the bundled Mexico–England match may call itself the "demo fixture". */
+export const isDemoFixture = fixture.fixtureId === DEMO.fixtureId;
 
 export const sides: FixtureSides = {
   participant1: fixture.participant1,
