@@ -27,7 +27,7 @@ export function Home() {
         fixtureId: fixture.fixtureId,
         stake: new BN(100_000_000),
         predicate,
-        settleAfterMs: defaultSettleAfterMs(fixture.startTime),
+        settleAfterMs: defaultSettleAfterMs(fixture.startTime, fixture.knockout === true),
         expiryUnix: defaultExpiryUnix(fixture.startTime),
       });
       setLaunching("Opponent accepting…");

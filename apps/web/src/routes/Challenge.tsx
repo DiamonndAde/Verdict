@@ -7,7 +7,7 @@ import { FightCard } from "@/components/FightCard";
 import { Receipt } from "@/components/Receipt";
 import { VerificationCascade } from "@/components/VerificationCascade";
 import { Button, Card, Divider } from "@/components/ui";
-import { proofForStatKeys, sides } from "@/lib/appData";
+import { fixture, isLiveFixture, proofForStatKeys, sides } from "@/lib/appData";
 import { describeForgedStats, describeStats } from "@/lib/predicateText";
 import { buildCascade, reVerifyOnChain, tamperProof } from "@/lib/verify";
 import { acceptMarket, demoTaker, settleMarket } from "@/lib/solana";
@@ -38,13 +38,20 @@ export function Challenge() {
   if (loading && !market) return <Skeleton />;
   if (!market) return <Empty text="Challenge not found on devnet." />;
 
-  const proof = proofForStatKeys(predicateStatKeys(market.predicate));
-  const statLabel = describeStats(proof.statsToProve, sides);
+  // The chain decides which match this challenge is about, not the browser's session. Proofs
+  // are looked up for THAT fixture, so a market can never be handed another match's proof.
+  const marketFixtureId = market.fixtureId.toNumber();
+  // A live match has no proof until its game_finalised record is published, so this is null
+  // before full time. Creating and ACCEPTING must still work then — only settling is gated.
+  const proof = proofForStatKeys(marketFixtureId, predicateStatKeys(market.predicate));
+  const isSettled = market.status === "settled" && market.outcome;
+
+  const statLabel = proof ? describeStats(proof.statsToProve, sides) : "";
   // The forged proof and its label are derived together, so the leaf the cascade breaks on
   // shows the lie next to the truth ("claims Mexico 15 corners — really 12").
-  const forgedProof = tamperProof(proof);
-  const forgedLabel = describeForgedStats(forgedProof.statsToProve, proof.statsToProve, sides);
-  const isSettled = market.status === "settled" && market.outcome;
+  const forgedProof = proof ? tamperProof(proof) : null;
+  const forgedLabel =
+    proof && forgedProof ? describeForgedStats(forgedProof.statsToProve, proof.statsToProve, sides) : "";
 
   const onAccept = async () => {
     setBusy(true);
@@ -59,6 +66,7 @@ export function Challenge() {
   };
 
   const onSettle = async () => {
+    if (!proof) return;
     setPhase("settling");
     setTxConfirmed(false);
     setCascadeDone(false);
@@ -76,6 +84,7 @@ export function Challenge() {
   };
 
   const onFraud = async () => {
+    if (!forgedProof) return;
     setPhase("fraud");
     const res = await reVerifyOnChain(forgedProof, market.predicate);
     setFraudError(res.errorName ?? "InvalidStatProof");
@@ -90,7 +99,7 @@ export function Challenge() {
             on-chain — otherwise a fast devnet confirmation swaps in the receipt mid-animation
             and the "VERIFIED ON SOLANA" stamp never lands (the hero moment on video). A cold
             load of an already-settled market skips this and shows the receipt directly. */}
-        {phase === "settling" && !(cascadeDone && isSettled) ? (
+        {phase === "settling" && proof && !(cascadeDone && isSettled) ? (
           <motion.div key="settling" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card className="p-6">
               <div className="mb-4 text-center text-xs uppercase tracking-widest text-chalk-faint">
@@ -100,11 +109,11 @@ export function Challenge() {
               {!txConfirmed && <div className="mt-4 text-center text-xs text-chalk-dim">settling on devnet…</div>}
             </Card>
           </motion.div>
-        ) : isSettled ? (
+        ) : isSettled && proof ? (
           <motion.div key="receipt" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
             <Receipt market={market} marketKey={marketKey} proof={proof} settleSig={settleSig} />
             <Divider className="my-8" />
-            <FraudPanel phase={phase} onFraud={onFraud} forgedProof={forgedProof} forgedLabel={forgedLabel} fraudError={fraudError} />
+            {forgedProof && <FraudPanel phase={phase} onFraud={onFraud} forgedProof={forgedProof} forgedLabel={forgedLabel} fraudError={fraudError} />}
           </motion.div>
         ) : (
           <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -133,7 +142,7 @@ export function Challenge() {
                 <ShareLink />
               </Card>
             )}
-            {market.status === "active" && (
+            {market.status === "active" && proof && (
               <Card className="flex flex-col items-center gap-4 p-6 text-center">
                 <div>
                   <div className="display text-xl font-semibold text-chalk">Match is final. Settle it.</div>
@@ -142,6 +151,19 @@ export function Challenge() {
                   </div>
                 </div>
                 <Button onClick={onSettle}>Settle by proof</Button>
+              </Card>
+            )}
+            {market.status === "active" && !proof && (
+              <Card className="p-8 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="size-2 animate-pulse rounded-full bg-volt" />
+                  <div className="display text-lg font-semibold text-chalk">Awaiting the final whistle</div>
+                </div>
+                <p className="mx-auto mt-2 max-w-md text-sm text-chalk-dim">
+                  Both stakes are escrowed. This challenge settles against the match's{" "}
+                  <span className="mono">game_finalised</span> record, which TxLINE publishes after
+                  full time. Settlement opens then — and anyone can trigger it.
+                </p>
               </Card>
             )}
             {(market.status === "cancelled" || market.status === "refunded") && (
@@ -206,6 +228,9 @@ function ShareLink() {
   if (typeof window !== "undefined") {
     const u = new URL(window.location.href);
     if (isDemoMode()) u.searchParams.set("demo", "1");
+    // Carry the fixture so the opener's fresh session renders the right match (teams, kickoff)
+    // rather than falling back to the default historical one.
+    if (isLiveFixture) u.searchParams.set("fixture", String(fixture.fixtureId));
     url = u.toString();
   }
   const copy = () => {

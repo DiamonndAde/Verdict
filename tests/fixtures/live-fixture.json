@@ -1,0 +1,10 @@
+{
+  "fixtureId": 18237038,
+  "participant1": "France",
+  "participant2": "Spain",
+  "participant1IsHome": true,
+  "competition": "World Cup",
+  "startTime": 1784055600000,
+  "settleAfterMs": 1784067600000,
+  "knockout": true
+}
