@@ -145,3 +145,33 @@ The docs do say to pick the record whose phase matches your condition, but a sho
 **"settling a final result? require `period == 100`"** callout in the on-chain-validation guide
 would make the failure mode much harder to walk into. It's the single most important thing we
 learned building a settlement product on TxLINE.
+
+## 2026-07-14 — Watching a live match end (France vs Spain, fixture 18237038)
+
+**Delight — a live match is settle-ready ~2 minutes after the final whistle, even on the free
+tier.** We polled `/api/scores/snapshot` every 60s through the whole match. The
+`game_finalised` record carried its own timestamp of 21:04:14Z; it became visible on the
+free tier (60s-delayed) 1.9 min later; `stat-validation` returned proofs for it immediately
+(+0.0 min); and the day's on-chain root already anchored the record, so
+`validate_stat_v2().view()` passed on the first try (+0.0 min). Feed visibility is the
+*only* meaningful latency term — the Merkle root was on-chain before we could even see the
+record. For a settlement product that is a superb story: the pot is payable ~2 minutes after
+full time. Full numbers in `docs/live-settle-latency.md`.
+
+**Note — pre-final snapshots surface `action: "disconnected"` records with `statusId` 100.**
+In the minutes before `game_finalised` appeared, the highest-seq record was a `disconnected`
+one that carries status-100-like markers. Anyone detecting finality with a `statusId`/`period`
+heuristic instead of `action === "game_finalised"` would fire early on these (we hit exactly
+this against our historical fixture too). Worth one docs line: *finality = the
+`game_finalised` action, nothing else.*
+
+**Integrator lesson (our bug, TxLINE-relevant) — anchor settlement windows below the earliest
+possible final, not above the latest.** Our settle gate compares a market's `settle_after`
+against the proof summary's `maxTimestamp` — which for a finished fixture is frozen forever at
+the final record's timestamp. We had defaulted knockout markets to kickoff+200min "to allow
+for ET and pens"; France–Spain finalised at kickoff+124min, so the genuine final proof could
+*never* clear the window and the market was permanently unsettleable (refund path only). The
+correct default is kickoff+105min — the minimum a real final can take — because every
+`game_finalised` record lands after it regardless of ET/pens. If the docs ever grow a
+"building settlement on TxLINE" page, this failure mode belongs on it next to the
+`period == 100` rule.
