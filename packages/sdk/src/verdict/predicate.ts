@@ -134,10 +134,22 @@ export function describeCondition(condition: Condition, sides: FixtureSides): st
   }
 }
 
-/** Convenience: the settle_after_ms default (kickoff + regulation buffer, or +ET/pens). */
-export function defaultSettleAfterMs(kickoffMs: number, extraTimePossible = false): number {
-  const minutes = extraTimePossible ? 200 : 130;
-  return kickoffMs + minutes * 60_000;
+/**
+ * Convenience: the settle_after_ms default — kickoff + 105 minutes.
+ *
+ * The time gate compares this against the PROOF's own `maxTimestamp` — the game_finalised
+ * record's timestamp, fixed forever once the match ends — never against the clock. So the
+ * default must sit BELOW the earliest possible final whistle, not above the latest one: a
+ * window the final record's timestamp never reaches is a window that never opens, and the
+ * market is permanently ProofTooEarly. (The old "ET/pens-aware" kickoff+200 default did
+ * exactly that to the 2026-07-14 France–Spain live markets, which finalised at kickoff+124.)
+ *
+ * 105 min = 45 + 15 + 45, the minimum a real final can take. Every genuine game_finalised
+ * record — regulation, extra time or penalties — lands after it, and early snapshots are
+ * already refused by the period == 100 gate; this one is only defense-in-depth behind it.
+ */
+export function defaultSettleAfterMs(kickoffMs: number): number {
+  return kickoffMs + 105 * 60_000;
 }
 
 /**

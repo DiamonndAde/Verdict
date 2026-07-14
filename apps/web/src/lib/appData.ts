@@ -12,7 +12,8 @@ export interface DemoFixture {
   participant2: string;
   participant1IsHome: boolean;
   startTime: number;
-  /** Knockout ties can run to extra time and penalties — settlement opens later. */
+  /** Knockout ties can run to extra time and penalties (display only — the settlement
+   *  window no longer depends on it; see defaultSettleAfterMs). */
   knockout?: boolean;
   /** Present only once the match has finished and its proofs are recorded. */
   finalSeq?: number;

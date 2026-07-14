@@ -15,7 +15,7 @@ import { after, before, describe, it } from "node:test";
 import { Transaction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { defaultExpiryUnix } from "@verdict/sdk/verdict";
+import { defaultExpiryUnix, defaultSettleAfterMs } from "@verdict/sdk/verdict";
 import {
   acceptMarketIx,
   computeIx,
@@ -344,6 +344,37 @@ describe("verdict", () => {
       sendFail(
         env.svm,
         new Transaction().add(computeIx(), await settleIx(env, v2ToSettleInput(proofs.v2CornersFinal), { settler: env.stranger, seed: new BN(24), minTimestampMs: FINAL_MIN_TS })),
+        [env.stranger],
+        { error: "ProofTooEarly" },
+      );
+    });
+
+    it("the kickoff+105 default window accepts a real finalised proof", async () => {
+      // Regression: the default settle_after used to be kickoff+200 for knockouts. The time
+      // gate compares against the proof's OWN maxTimestamp — fixed forever once the match
+      // finalises — so a window past the final whistle never opens and the market is bricked
+      // (this happened to the France–Spain live markets on 2026-07-14, finalised kickoff+124).
+      // The default must sit below the earliest real final: kickoff+105. Our demo fixture's
+      // game_finalised record landed at kickoff+~135, so it must clear the default window.
+      const env = freshEnv();
+      const settleAfterMs = defaultSettleAfterMs(KICKOFF_MS);
+      assert.equal(settleAfterMs, KICKOFF_MS + 105 * 60_000, "default is kickoff + 105 min");
+      assert.ok(FINAL_MAX_TS >= settleAfterMs, "the real final record clears the default window");
+      await openAndAccept(env, 30, CORNERS_OVER_9, settleAfterMs);
+      const res = await settle(env, 30, v2ToSettleInput(proofs.v2CornersFinal), FINAL_MIN_TS);
+      assert.equal("logs" in res, true, "settle succeeds inside the default window");
+      assert.equal(fetchMarket(env, new BN(30)).status.settled !== undefined, true);
+    });
+
+    it("a kickoff+200 window rejects that same finalised proof forever", async () => {
+      // The other half of the regression: with the old ET/pens-aware default the genuine
+      // final proof (kickoff+~135) is ProofTooEarly — and since its timestamp never grows,
+      // it stays ProofTooEarly for eternity. Guards against reintroducing a late default.
+      const env = freshEnv();
+      await openAndAccept(env, 31, CORNERS_OVER_9, KICKOFF_MS + 200 * 60_000);
+      sendFail(
+        env.svm,
+        new Transaction().add(computeIx(), await settleIx(env, v2ToSettleInput(proofs.v2CornersFinal), { settler: env.stranger, seed: new BN(31), minTimestampMs: FINAL_MIN_TS })),
         [env.stranger],
         { error: "ProofTooEarly" },
       );

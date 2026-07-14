@@ -55,7 +55,7 @@ async function main() {
   const predicate = compilePredicate(condition, sides);
 
   const now = Date.now();
-  const settleAfterMs = defaultSettleAfterMs(live.startTime, true); // knockout: ET/pens aware
+  const settleAfterMs = defaultSettleAfterMs(live.startTime);
   const expiryUnix = defaultExpiryUnix(live.startTime, now);
 
   console.log(`fixture ${live.fixtureId}  ${live.participant1} vs ${live.participant2} (${live.competition})`);

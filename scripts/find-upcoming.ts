@@ -1,7 +1,6 @@
 /**
  * Finds an UPCOMING fixture (the live-match demo path), as opposed to find-fixture.ts which
- * hunts for already-completed ones. Prints kickoff, and the ET/pens-aware settlement windows
- * a knockout tie needs.
+ * hunts for already-completed ones. Prints kickoff and the settlement windows.
  *
  *   npx tsx scripts/find-upcoming.ts            # today + tomorrow, all
  *   npx tsx scripts/find-upcoming.ts France     # filter by team name
@@ -11,7 +10,7 @@ import { Connection } from "@solana/web3.js";
 import { TxLineAuth, loadKeypair } from "@verdict/sdk/auth";
 import { TxLineClient } from "@verdict/sdk/api";
 import { DEVNET } from "@verdict/sdk/config";
-import { defaultExpiryUnix } from "@verdict/sdk/verdict";
+import { defaultExpiryUnix, defaultSettleAfterMs } from "@verdict/sdk/verdict";
 
 const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().replace(".000", "");
@@ -40,16 +39,14 @@ async function main() {
   for (const f of upcoming) {
     const kickoff = f.StartTime;
     const inMin = Math.round((kickoff - now) / 60_000);
-    // Knockout ties can go to extra time and penalties: allow 200 minutes before the
-    // settlement window opens, rather than the 130 used for a regulation-only match.
-    const settleAfterMs = kickoff + 200 * 60_000;
+    const settleAfterMs = defaultSettleAfterMs(kickoff);
     const expiryUnix = defaultExpiryUnix(kickoff, now);
     console.log(
       `fixtureId ${f.FixtureId}  ${f.Participant1} vs ${f.Participant2}\n` +
         `  competition : ${f.Competition} (${f.CompetitionId})\n` +
         `  kickoff     : ${iso(kickoff)}  (${inMin >= 0 ? `in ${inMin} min` : `${-inMin} min ago`})  ts=${kickoff}\n` +
         `  p1IsHome    : ${f.Participant1IsHome}\n` +
-        `  settle_after: ${iso(settleAfterMs)}  ts=${settleAfterMs}   (kickoff + 200min, ET/pens-aware)\n` +
+        `  settle_after: ${iso(settleAfterMs)}  ts=${settleAfterMs}   (kickoff + 105min — see defaultSettleAfterMs)\n` +
         `  expiry      : ${iso(expiryUnix * 1000)}  unix=${expiryUnix}   (max(kickoff, now) + 7d)\n`,
     );
   }
@@ -63,7 +60,7 @@ async function main() {
       participant1IsHome: pick.Participant1IsHome,
       competition: pick.Competition,
       startTime: pick.StartTime,
-      settleAfterMs: pick.StartTime + 200 * 60_000,
+      settleAfterMs: defaultSettleAfterMs(pick.StartTime),
       knockout: true,
     };
     fs.writeFileSync("tests/fixtures/live-fixture.json", JSON.stringify(out, null, 2));

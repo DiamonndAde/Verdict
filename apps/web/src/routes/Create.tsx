@@ -33,7 +33,7 @@ export function Create() {
         fixtureId: fixture.fixtureId,
         stake: new BN(Math.round(stake * 1_000_000)),
         predicate,
-        settleAfterMs: defaultSettleAfterMs(fixture.startTime, fixture.knockout === true),
+        settleAfterMs: defaultSettleAfterMs(fixture.startTime),
         expiryUnix: defaultExpiryUnix(fixture.startTime),
       });
       // This tab created the challenge, so it is the creator; the opponent opens the link
