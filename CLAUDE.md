@@ -68,11 +68,26 @@ devnet, escrowed in dUSDC, settled permissionlessly by TxLINE Merkle proof.
   regulation time); a real final record always lands after that, ET or not. Regression
   tests cover both directions.
 - **Next fixture**: England vs Argentina, fixture `18241006`, kickoff 2026-07-15T19:00Z
-  (20:00 WAT). Tomorrow repeats the live sequence with scenes recorded BEFORE kickoff.
-  Switching fixtures = find-upcoming → copy live-fixture.json to apps/web/src/data/ →
-  **reset live-proofs.json to `{}`** (stale France–Spain proofs keyed under Argentina's id
-  would fail FixtureMismatch) → build + push.
-- **Tier 2 (fixture picker) NOT started — awaiting reviewer go.**
+  (20:00 WAT). Expected default settle_after: 2026-07-15T20:45:00Z (kickoff+105).
+
+## July 15 runbook (reviewer-approved, 2026-07-14)
+
+1. **By 16:00 WAT (15:00 UTC)** — pre-kickoff switch: `find-upcoming Argentina` →
+   copy live-fixture.json into apps/web/src/data/ → **reset both live-proofs.json copies
+   to `{}`** (stale France–Spain proofs under Argentina's id fail FixtureMismatch) →
+   commit, flag for push (Vercel deploys on push).
+2. **TRUST-BUT-VERIFY GATE (hard requirement)** — after the deploy: create a THROWAWAY
+   market for 18241006 via the DEPLOYED site (Playwright against verdict-self.vercel.app;
+   restore chromium libs per memory), read `settle_after_ms` back from the on-chain
+   account, and report the RAW value. It must equal 1784148300000 = 2026-07-15T20:45:00Z.
+   The real on-camera challenge is created ONLY after this passes.
+   **HARD STOP after reporting step 2.** Steps 3–4 then proceed automatically around the
+   match without further review.
+3. Start `npm run watch-live` BEFORE 19:00Z kickoff — current code, so score-stamping runs.
+4. At FT: proofs + COMPLETED stamp + latency numbers in **one commit**, flagged for
+   immediate push. Target: settle scene recordable within ~30 min of the final whistle.
+5. README latency headline + devnet-run.md stuck-markets note: **done 2026-07-14**.
+6. **Tier 2 (fixture picker) frozen until July 16**, after all scenes are recorded.
 
 ## Key commands
 

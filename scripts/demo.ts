@@ -238,6 +238,18 @@ function writeEvidence(deployedProgram: string, mint: string, settledMarket: str
     "and the transaction is recorded on-chain as **failed**. Open its Explorer link above: the",
     "error is real, and the escrow is untouched. That failure *is* the security demo.",
     "",
+    "## A finding from running this against a real live match",
+    "",
+    "Three markets for France vs Spain (fixture `18237038`, settled 2026-07-14) are permanently",
+    "stuck on devnet: they were created with `settle_after` = kickoff+200min (\"allow for extra",
+    "time and penalties\"), but the time gate compares that bound against the **proof's own**",
+    "`maxTimestamp` — frozen forever at the `game_finalised` record's timestamp (kickoff+124min)",
+    "— never against the clock. A window the final record never reaches is a window that never",
+    "opens: every settle attempt is `ProofTooEarly`, for eternity, and only `refund_expired`",
+    "(the 50/50 liveness valve) can recover the escrow. That live failure is why the default is",
+    "now **kickoff+105min** — *below the earliest possible final whistle rather than above the",
+    "latest one* — with regression tests in both directions.",
+    "",
   ];
   fs.writeFileSync("docs/devnet-run.md", lines.join("\n"));
   log(`\n  wrote docs/devnet-run.md (${evidence.length} steps)`);

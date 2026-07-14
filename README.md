@@ -120,6 +120,11 @@ forever on an abandoned match.
   the forgery, not our code.
 - **Measurement report** (`docs/measurement-report.txt`): the settle transaction is **992 bytes**
   (cap 1232), so settlement is a single transaction — no proof-buffer flow needed.
+- **A live match is settle-ready ~2 minutes after the final whistle.** We watched France 0–2
+  Spain (World Cup, 2026-07-14) end in real time: the `game_finalised` record became visible
+  on the free tier 1.9 min after its own timestamp, its Merkle proofs and the on-chain daily
+  root were available the same second, and `validate_stat_v2().view()` passed on the first
+  try. Stage-by-stage numbers: **[docs/live-settle-latency.md](docs/live-settle-latency.md)**.
 
 ## TxLINE integration
 
