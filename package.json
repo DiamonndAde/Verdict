@@ -20,7 +20,10 @@
     "dump-oracle-state": "tsx scripts/dump-oracle-state.ts",
     "measure-settle": "tsx scripts/measure-settle.ts",
     "measure-cu": "tsx scripts/measure-cu.ts",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "find-upcoming": "tsx scripts/find-upcoming.ts",
+    "watch-live": "tsx scripts/watch-live.ts",
+    "live-create-check": "tsx scripts/live-create-check.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
