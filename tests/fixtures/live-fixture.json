@@ -6,5 +6,9 @@
   "competition": "World Cup",
   "startTime": 1784142000000,
   "settleAfterMs": 1784148300000,
-  "knockout": true
+  "knockout": true,
+  "finalSeq": 962,
+  "finalisedTs": 1784150064772,
+  "goals": "1-2",
+  "corners": 7
 }
