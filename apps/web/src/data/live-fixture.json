@@ -1,14 +1,10 @@
 {
-  "fixtureId": 18237038,
-  "participant1": "France",
-  "participant2": "Spain",
+  "fixtureId": 18241006,
+  "participant1": "England",
+  "participant2": "Argentina",
   "participant1IsHome": true,
   "competition": "World Cup",
-  "startTime": 1784055600000,
-  "settleAfterMs": 1784067600000,
-  "knockout": true,
-  "finalSeq": 1026,
-  "finalisedTs": 1784063054751,
-  "goals": "0-2",
-  "corners": 8
+  "startTime": 1784142000000,
+  "settleAfterMs": 1784148300000,
+  "knockout": true
 }

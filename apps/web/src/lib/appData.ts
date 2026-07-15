@@ -2,8 +2,10 @@ import type { FixtureSides } from "@verdict/sdk/verdict";
 import type { StatValidationV2 } from "@verdict/sdk/types";
 import demoFixture from "@/data/demo-fixture.json";
 import liveFixture from "@/data/live-fixture.json";
+import franceSpainFixture from "@/data/france-spain-fixture.json";
 import proofsJson from "@/data/proofs.json";
 import liveProofsJson from "@/data/live-proofs.json";
+import franceSpainProofsJson from "@/data/france-spain-proofs.json";
 
 export interface DemoFixture {
   fixtureId: number;
@@ -30,10 +32,16 @@ interface FixtureProofs {
 
 const DEMO = demoFixture as unknown as DemoFixture;
 const LIVE = liveFixture as unknown as DemoFixture;
+// France 0–2 Spain — our first live-settled match, kept as a permanent, addressable
+// COMPLETED fixture (?fixture=18237038) so it survives as fallback evidence when LIVE rolls
+// over to the next upcoming match. Its own proofs stay scoped to its own id; LIVE's proofs
+// are reset to {} on every rollover so a new fixture never inherits a prior match's proofs.
+const FRANCE_SPAIN = franceSpainFixture as unknown as DemoFixture;
 
 /** Every fixture the app can render, by id. The historical demo fixture is the default. */
 const FIXTURES: Record<number, DemoFixture> = {
   [DEMO.fixtureId]: DEMO,
+  [FRANCE_SPAIN.fixtureId]: FRANCE_SPAIN,
   [LIVE.fixtureId]: LIVE,
 };
 
@@ -45,6 +53,7 @@ const FIXTURES: Record<number, DemoFixture> = {
  */
 const PROOFS: Record<number, FixtureProofs> = {
   [DEMO.fixtureId]: proofsJson as unknown as FixtureProofs,
+  [FRANCE_SPAIN.fixtureId]: franceSpainProofsJson as unknown as FixtureProofs,
   [LIVE.fixtureId]: liveProofsJson as unknown as FixtureProofs,
 };
 
